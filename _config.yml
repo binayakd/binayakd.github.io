@@ -26,3 +26,5 @@ github:
   repo:           https://github.com/binayakd
 
 gems: [jekyll-paginate]
+
+theme: jekyll-theme-minimal
