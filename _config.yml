@@ -11,7 +11,7 @@ title:            Binayak Dasgupta
 tagline:          'Coder at work'
 description:      'Newbi stuggeling through programming and data science.'
 url:              https://binayakd.github.io/
-baseurl:          /
+baseurl:          https://binayakd.github.io/
 
 author:
   name:           'Binayak Dasgupta'
