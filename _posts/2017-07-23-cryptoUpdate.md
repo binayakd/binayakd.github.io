@@ -45,17 +45,17 @@ sheet.append_row(value_list) #append to the sheet, make sure no empty rows in th
 
 ## Getting JSON data from Nanopool API
 Nanopool provides API endpoints to extract various kinds of data for your mining pool:
-- https://eth.nanopool.org/api
+- [https://eth.nanopool.org/api](https://eth.nanopool.org/api)
 
 Choose one to get the relevent data you need.
 
 ## Authorization to connect to Google Sheets
 Proper credentials have to be generated and applied for your script to be able to connect and write to the google sheets:
-- http://gspread.readthedocs.io/en/latest/oauth2.html
+- [http://gspread.readthedocs.io/en/latest/oauth2.html](http://gspread.readthedocs.io/en/latest/oauth2.html)
 
 ## Connecting and wrting to Google Sheets
 The main list of gspread API references are given here:
-- http://gspread.readthedocs.io/en/latest/
+- [http://gspread.readthedocs.io/en/latest/](http://gspread.readthedocs.io/en/latest/)
 
 In this script the sheet file to be written to is selected using the url: `gclient.open_by_url(url)` <br>
 The sheet is selected using the index, which is zero-indexed: `worksheet.get_worksheet(index)` <br>
