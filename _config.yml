@@ -8,10 +8,10 @@ permalink:        pretty
 
 # Setup
 title:            Binayak Dasgupta
-tagline:          ''
+tagline:          'Jack of some trades, master of None'
 description:      ''
-url:              https://binayakd.github.io/
-baseurl:          https://binayakd.github.io/
+url:              'https://binayakd.github.io/'
+baseurl:          '/'
 
 author:
   name:           'Binayak Dasgupta'
@@ -20,11 +20,11 @@ author:
 paginate:         5
 
 # Custom vars
-version:          0.0.1
+version:          1.0.1
 
 github:
   repo:           https://github.com/binayakd
 
-gems: [jekyll-paginate]
+plugins: [jekyll-paginate]
 
-theme: jekyll-theme-minimal
+#theme: jekyll-theme-minimal
