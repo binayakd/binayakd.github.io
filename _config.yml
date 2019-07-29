@@ -25,6 +25,12 @@ version:          1.0.1
 github:
   repo:           https://github.com/binayakd
 
-plugins: [jekyll-paginate]
+plugins: 
+  - jekyll-paginate
+  - jekyll-archives
+
+jekyll-archives:
+  enabled: all
+  layout: post
 
 #theme: jekyll-theme-minimal

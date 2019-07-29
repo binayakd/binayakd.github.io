@@ -1,3 +1,7 @@
+---
+layout: post
+title: Crypto Update
+---
 Short python script to record data from Nanopool cryptocurrency mining account into Google sheets. 
 The code is pretty well commented, and I listed some gotchas below. 
 Otherwise a pretty simple script. <br>
