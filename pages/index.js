@@ -5,21 +5,26 @@ import Link from 'next/link'
 
 export default function Home({ allPostsData }) {
   return (
-    <Layout home='true'>
-      <section className={`${utilStyles.headingMd} ${utilStyles.center}`}>
-        <p>
-          Hi, I'm Binayak. <br/>
-          I'm a developer and devops engineer. <br/>
-          This is where I show off and ramble. 
-        </p>
-      </section>
-      <section className={`${utilStyles.headingLg} ${utilStyles.center}`}>
-        <Link href="/blog">Blog</Link> <br/>
-        <a href={cvLink} target="_blank" rel='noopener noreferrer'>CV</a><br/>
-        <a href={githubLink} target="_blank">Github</a><br/>
-        <a href={linkedInLink} target="_blank">Linkedin</a> 
-        <br/>
-        <br/>
+    <Layout home='true' page="Blog" backLink="/">
+      <section className={utilStyles.padding1px}>
+        {/* <p className={utilStyles.headingXl}>Blog Posts</p> */}
+        <ul className={utilStyles.list}>
+          {allPostsData.map(({ id, date, title, summary }) => (
+            (<Link href={`/${id}`} className="plain" key={id}>
+
+              <li className={utilStyles.listItem} >
+                <span className={utilStyles.headingLg}>{title}</span>
+                <br />
+                <small className={utilStyles.lightText}>
+                  {new Date(date).toDateString()}
+                </small>
+                <br />
+                {summary}
+              </li>
+
+            </Link>)
+          ))}
+        </ul>
       </section>
     </Layout>
   );

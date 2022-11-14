@@ -31,21 +31,7 @@ export default function Layout(props) {
         <title>{siteTitle}</title>
       </Head>
       <header>
-        {props.home ? (
-          <>
-          <header className={styles.header}>
-            <Image
-              priority
-              src="/images/bean.png"
-              className={utilStyles.borderCircle}
-              height={144}
-              width={144}
-              alt={siteTitle}
-            />
-            <h1 className={utilStyles.heading2Xl}>{displayHeader}</h1>
-          </header>
-          </>
-        ) : (
+        {
           <>
           <header className={styles.headerLeft}>
             <h2>
@@ -53,15 +39,17 @@ export default function Layout(props) {
                 {displayHeader}
               </Link>
               <div className={styles.topnavRight}>
+                <Link href="/about" className={utilStyles.headingLg}>.AboutMe.</Link>
+                <span>&nbsp;&nbsp;</span>
                 <a href={githubLink} target="_blank"><FontAwesomeIcon icon={faGithub} /></a>
                 <span>&nbsp;&nbsp;</span>
-                <a href={linkedInLink} target="_blank"><FontAwesomeIcon icon={faLinkedin} /></a> {" "}
+                <a href={linkedInLink} target="_blank"><FontAwesomeIcon icon={faLinkedin} /></a>
               </div>
               
             </h2>
           </header>
           </>
-        )}
+        }
       </header>
       <hr color="#3c3c3c" />
       <main>{props.children}</main>

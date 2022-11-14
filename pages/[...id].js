@@ -1,15 +1,15 @@
-import Layout from '../../components/layout'
-import { getAllPostIds, getPostData } from '../../lib/posts'
-import Date from '../../components/date'
-import utilStyles from '../../styles/utils.module.css'
+import Layout from '../components/layout'
+import { getAllPostIds, getPostData } from '../lib/posts'
+import Date from '../components/date'
+import utilStyles from '../styles/utils.module.css'
 
 import ReactMarkdown from 'react-markdown'
-import CodeBlock from '../../components/codeblock'
+import CodeBlock from '../components/codeblock'
 
 
 export default function Post({ postData }) {
   return (
-    <Layout page="Blog" backLink="/blog">
+    <Layout page="Blog" backLink="/">
       <article>
         <h1 className={utilStyles.headingXl}>{postData.title}</h1>
         <div className={utilStyles.lightText}>
