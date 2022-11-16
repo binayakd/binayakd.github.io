@@ -29,4 +29,11 @@ yarn-error.log*
 .env.test.local
 .env.production.local
 
-out
+
+.git/
+.gitignore
+.next/                
+.dockerignore
+Dockerfile
+docker-compose.yml
+node_modules/         

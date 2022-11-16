@@ -1,0 +1,28 @@
+.container {
+  max-width: 1000px;
+  padding: 1rem 3rem 1rem;
+  margin: 3rem auto 3rem;
+  background: #252525;
+  /* box-shadow: 0 0 50px black; */
+  border-radius: 10px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+}
+
+.backToHome {
+  margin: 3rem 0 0;
+}
+
+.topnavRight {
+  float: right;
+}
