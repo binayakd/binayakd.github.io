@@ -67,3 +67,15 @@ For those who have not spotted the problem yet, here it is:
 
 So was there suppose to be 2 diffrent files, one with `.ts` and another without? So that was my next question:
 
+>Should it be `src/routes/[slug].svelte.ts` or `src/routes/[slug].svelte`, or are they 2 >different files?
+
+Chatgpt's reply:
+>Both `src/routes/[slug].svelte.ts `and `src/routes/[slug].svelte` refer to the same file.
+>
+>The `.ts` extension indicates that the file contains TypeScript code, while the file without an extension indicates that it contains Svelte code with JavaScript syntax.
+>
+>In SvelteKit, you can use either file extension for your Svelte components. If you prefer to use TypeScript, you can use the `.ts` extension and write your code in TypeScript. If you prefer to use JavaScript, you can use the file without an extension and write your code in JavaScript.
+>
+>However, if you want to use TypeScript in your Svelte components, you need to use the `.ts` extension and make sure that your SvelteKit project is set up to support TypeScript.
+
+The last sentence kind of throew me off. So i went to the officealr SveltKit Docs

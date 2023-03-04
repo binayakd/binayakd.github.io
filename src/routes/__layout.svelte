@@ -1,18 +1,23 @@
+<head>
+  <title>My Blog</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+
 <header>
 <h1>My Blog</h1>
-<nav>
+  <nav>
     <ul>
-    <li><a href="/">Home</a></li>
-    <li><a href="/about">About</a></li>
-    <li><a href="/contact">Contact</a></li>
+      <li><a href="/">Home</a></li>
+      <li><a href="/about">About</a></li>
+      <li><a href="/contact">Contact</a></li>
     </ul>
-</nav>
+  </nav>
 </header>
 
 <main>
-<slot></slot>
+  <slot></slot>
 </main>
 
 <footer>
-<p>&copy; 2023 My Blog</p>
+  <p>&copy; 2023 My Blog</p>
 </footer>
