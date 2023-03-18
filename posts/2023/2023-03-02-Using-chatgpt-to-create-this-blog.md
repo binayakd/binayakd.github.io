@@ -11,7 +11,7 @@ I have wanted to create a proper tech blog for a long time. I have also wanted t
 
 So I asked Chatgpt, "How do I create a blog with Sveltkit with Typescript?"
 
-The reply was pretty helpful up to a point. It was in the standard point form, telling me how to install Sveltkit with NPM, and how to setup the folder sructure, and how to set up the api call to a database (it was tkinking the posts come from a data base).
+The reply was pretty helpful up to a point. It was in the standard point form, telling me how to install Sveltkit with NPM, and how to setup the folder structure, and how to set up the api call to a database (it was thinking the posts come from a data base).
 
 All was well and good, until I noticed something off. Points 4 and 5 was this:
 
@@ -78,4 +78,12 @@ Chatgpt's reply:
 >
 >However, if you want to use TypeScript in your Svelte components, you need to use the `.ts` extension and make sure that your SvelteKit project is set up to support TypeScript.
 
-The last sentence kind of throew me off. So i went to the officealr SveltKit Docs
+The last sentence kind of threw me off. So I went to the [official SveltKit docs](https://kit.svelte.dev/docs/introduction), specifically the one about [routing](https://kit.svelte.dev/docs/routing), found the JavaScript/TypeScript toggle at the bottom, and noticed that none of the Svelt file change extensions. 
+
+Another thing that I noticed while reading the docs, that the "main" page is [`+page.svelte`](https://kit.svelte.dev/docs/routing#page), while ChatGPT was telling me that it should be `index.svelte.ts`? 
+
+I then asked about how to do layouts in Sveltkit. ChatGPT gave a pretty good rundown on how to create a `_layout.svelte` file to define the main layout with the `<slot></slot>` setup, add a nav bar to it, and then import this to all the other files and using it together with `<svelte:component this={Layout}>` blocks. I did copy it over, and it all worked too. But then having read the docs, I saw that the in there it talked about the [`+layout.svelte`](https://kit.svelte.dev/docs/routing#layout) file, which then gets automatically setup as layout for all pages, without needing to import it.
+
+With all this conflicting information, I googled the difference between `+page.svelte` and `index.svelte.ts`, and found a [reddit post](https://www.reddit.com/r/sveltejs/comments/wytxl2/why_did_sveltekit_adopt_the_pagesvelte_routing/) and huge [github issue](https://github.com/sveltejs/kit/discussions/5748), that seem to suggest there was a bit update for Sveltkit v1.0.
+
+Bottom line, ChatGPT seems to have outdated data. Which makes sense its side to only been trained on data until 2021, and does not have access to Internet.

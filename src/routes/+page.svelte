@@ -1,13 +1,43 @@
-<script>
-  import Layout from './__layout.svelte';
+<script lang='ts'>
+  import { onMount } from 'svelte'
+  import { createScene } from '../lib/sphere';
+
+  let el: any
+
+  onMount(() => {
+    createScene(el)
+  });
 </script>
 
-<svelte:head>
-  <title>My Blog - Home</title>
-</svelte:head>
 
+<div class="container">
+  <div class="sphere-container">
+    <canvas bind:this={el} />
+  </div>
+  <div class="intro-container">           
+    <h1>The Art of Failing Forward</h1>
+    <p>
+      I'm Binayak Dasgupta, a software/data/engineer. Here is where I ramble and try new things.
+    </p>  
+  </div>
+</div>
 
-<svelte:component this={Layout}>
-  <h1>Welcome to SvelteKit</h1>
-  <p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>  
-</svelte:component>
+<style>
+  .container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+  }
+
+  .sphere-container {
+    width: 300px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .intro-container {
+    width: 600px;
+    padding: 0 50px;
+  }
+</style>
