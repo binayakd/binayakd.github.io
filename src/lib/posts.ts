@@ -1,4 +1,6 @@
 import fs from 'fs';
+import path from 'path';
+import matter from 'gray-matter';
 import { marked } from 'marked';
 
 const POSTS_PER_PAGE = 10;
@@ -8,59 +10,54 @@ export interface PostData {
   title: string;
   date: string;
   excerpt: string;
+  content: string;
 }
 
-export async function getPosts() {
-  const posts = [];
+export function getPosts(dir: string): PostData[] {
+  const files = fs.readdirSync(dir);
+  const postsData: PostData[] = [];
 
-  // Get a list of year subfolders
- fs.readdir('../../posts', { withFileTypes: true }, (err, yearFolder) => {
-  if (err)
-    console.log(err);
-  else {
-    fs.
-  }
- }
- 
- 
- );
-  for (const year of years) {
-    if (year.isDirectory()) {
-      // Get a list of post files in the year subfolder
-      const postFiles = await fs.readdir(`src/routes/blog/${year.name}`, {
-        withFileTypes: true,
-      });
-      for (const file of postFiles) {
-        if (file.isFile() && file.name.endsWith('.md')) {
-          // Get the post data
-          const post = await getPostData(year.name, file.name);
-          posts.push(post);
-        }
-      }
+  files.forEach((file) => {
+    const filePath = path.join(dir, file);
+    const fileStat = fs.statSync(filePath);
+
+    if (fileStat.isDirectory()) {
+      const subfolderPostsData = getPosts(filePath);
+      postsData.push(...subfolderPostsData);
+      return;
     }
-  }
 
-  // Sort posts by date in descending order
-  posts.sort((a, b) => b.date - a.date);
+    if (path.extname(filePath) === '.md') {
+      const fileContents = fs.readFileSync(filePath, 'utf8');
+      const { data, content } = matter(fileContents);
 
-  return posts;
-}
-
-export const parseMarkdown = (text: string): string => {
-  marked.setOptions({
-    renderer: new marked.Renderer(),
-    highlight: function (code, lang) {
-      const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-      return hljs.highlight(code, { language }).value;
-    },
-    langPrefix: 'hljs language-', // highlight.js css expects a top-level 'hljs' class.
-    pedantic: false,
-    gfm: true,
-    breaks: false,
-    sanitize: false,
-    smartypants: false,
-    xhtml: false
+      postsData.push({
+        content,
+        slug: filePath,
+        title: data.title,
+        date: data.date,
+        excerpt: content.split('\n')[0]
+      });
+    }
   });
 
-  return DOMPurify.sanitize(marked.parse(text));
-};
+  return postsData;
+}
+// export const parseMarkdown = (text: string): string => {
+//   marked.setOptions({
+//     renderer: new marked.Renderer(),
+//     highlight: function (code, lang) {
+//       const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+//       return hljs.highlight(code, { language }).value;
+//     },
+//     langPrefix: 'hljs language-', // highlight.js css expects a top-level 'hljs' class.
+//     pedantic: false,
+//     gfm: true,
+//     breaks: false,
+//     sanitize: false,
+//     smartypants: false,
+//     xhtml: false
+//   });
+
+//   return DOMPurify.sanitize(marked.parse(text));
+// };
