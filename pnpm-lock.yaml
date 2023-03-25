@@ -3,9 +3,11 @@ lockfileVersion: 5.4
 specifiers:
   '@sveltejs/adapter-auto': ^2.0.0
   '@sveltejs/kit': ^1.5.0
+  '@types/marked': ^4.0.8
   '@types/three': ^0.149.0
   gray-matter: ^4.0.3
   markdown-it: ^13.0.1
+  marked: ^4.2.12
   svelte: ^3.54.0
   svelte-check: ^3.0.1
   three: ^0.150.1
@@ -16,11 +18,13 @@ specifiers:
 dependencies:
   gray-matter: 4.0.3
   markdown-it: 13.0.1
+  marked: 4.2.12
   three: 0.150.1
 
 devDependencies:
   '@sveltejs/adapter-auto': 2.0.0_@sveltejs+kit@1.9.2
   '@sveltejs/kit': 1.9.2_svelte@3.55.1+vite@4.1.4
+  '@types/marked': 4.0.8
   '@types/three': 0.149.0
   svelte: 3.55.1
   svelte-check: 3.0.4_svelte@3.55.1
@@ -327,6 +331,10 @@ packages:
 
   /@types/cookie/0.5.1:
     resolution: {integrity: sha512-COUnqfB2+ckwXXSFInsFdOAWQzCCx+a5hq2ruyj+Vjund94RJQd4LG2u9hnvJrTgunKAaax7ancBYlDrNYxA0g==}
+    dev: true
+
+  /@types/marked/4.0.8:
+    resolution: {integrity: sha512-HVNzMT5QlWCOdeuBsgXP8EZzKUf0+AXzN+sLmjvaB3ZlLqO+e4u0uXrdw9ub69wBKFs+c6/pA4r9sy6cCDvImw==}
     dev: true
 
   /@types/node/18.14.2:
@@ -715,6 +723,12 @@ packages:
       linkify-it: 4.0.1
       mdurl: 1.0.1
       uc.micro: 1.0.6
+    dev: false
+
+  /marked/4.2.12:
+    resolution: {integrity: sha512-yr8hSKa3Fv4D3jdZmtMMPghgVt6TWbk86WQaWhDloQjRSQhMMYCAro7jP7VDJrjjdV8pxVxMssXS8B8Y5DZ5aw==}
+    engines: {node: '>= 12'}
+    hasBin: true
     dev: false
 
   /mdurl/1.0.1:

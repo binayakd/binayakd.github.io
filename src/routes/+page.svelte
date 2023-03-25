@@ -1,23 +1,24 @@
 <script lang='ts'>
   import { onMount } from 'svelte'
-  import { createScene } from '../lib/sphere';
+  import { createThreeDSphere  } from '../lib/sphere';
 
-  let el: any
+  let canvas: HTMLCanvasElement;
 
   onMount(() => {
-    createScene(el)
+    const { animate } = createThreeDSphere(canvas);
+    animate()
   });
 </script>
 
 
 <div class="container">
   <div class="sphere-container">
-    <canvas bind:this={el} />
+    <canvas bind:this={canvas} />
   </div>
   <div class="intro-container">           
     <h1>The Art of Failing Forward</h1>
     <p>
-      I'm Binayak Dasgupta, a software/data/engineer. Here is where I ramble and try new things.
+      I'm Binayak Dasgupta, a software/data/devops engineer. Here is where I ramble and try new things.
     </p>  
   </div>
 </div>

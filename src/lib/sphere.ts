@@ -1,35 +1,49 @@
-import * as THREE from 'three';
+import * as THREE from "three";
 
-const scene = new THREE.Scene();
+export function createThreeDSphere(canvas: HTMLCanvasElement) {
+  // Set the dimensions of the canvas
+  const width = 300;
+  const height = 300;
+  canvas.width = width;
+  canvas.height = height;
 
-const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-camera.position.z = 10;
+  // Create a new Three.js scene
+  const scene = new THREE.Scene();
 
-let renderer: THREE.WebGLRenderer
-// const renderer = new THREE.WebGLRenderer();
-// renderer.setSize(450, 450);
+  // Create a new camera and position it in the center of the scene
+  const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+  camera.position.set(0, 0, 10);
 
-// Create a new wireframe sphere geometry and material
-const sphereGeometry = new THREE.SphereGeometry(6, 10, 10);
-const sphereMaterial = new THREE.MeshBasicMaterial({
-  color: 0x00ff00,
-  wireframe: true
-});
+  // Create a new wireframe sphere
+  const sphereGeometry = new THREE.SphereGeometry(5, 10, 10);
+  const sphereMaterial = new THREE.MeshBasicMaterial({
+    wireframe: true,
+    color: "#00ff00",
+  });
+  const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 
-// Add the wireframe sphere to the Three.js scene
-const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-scene.add(sphere);
+  // Add the sphere to the scene
+  scene.add(sphere);
 
-// Add a spinning animation to the wireframe sphere
-const animate = () => {
-  sphere.rotation.y += 0.01;
-  sphere.rotation.x += 0.01;
-  renderer.render(scene, camera);
-  requestAnimationFrame(animate);
+  // Create a new renderer
+  const renderer = new THREE.WebGLRenderer({ canvas });
+
+  // Set the background color of the renderer
+  // renderer.setClearColor("#333");
+
+  // Define the animate function
+  function animate() {
+    // Rotate the sphere
+    sphere.rotation.x += 0.01;
+    sphere.rotation.y += 0.01;
+
+    // Render the scene
+    renderer.render(scene, camera);
+
+    // Request a new animation frame
+    requestAnimationFrame(animate);
+  }
+
+  // Return the animate function
+  return { animate };
 }
-
-export const createScene = (el: any) => {
-	renderer = new THREE.WebGLRenderer({ antialias: true, canvas: el });
-  renderer.setSize(200, 200);
-	animate();
-};
