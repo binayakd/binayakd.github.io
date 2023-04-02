@@ -1,4 +1,4 @@
-import { getPosts } from '../src/lib/posts'
+import { getPosts} from '../src/lib/posts'
 
 
 describe("getPosts function", () => {
@@ -7,3 +7,10 @@ describe("getPosts function", () => {
     expect(posts).toBeInstanceOf(Array);
   });
 });
+
+// describe("fetchMarkdownPosts function", () => {
+//   it("returns arrays of posts", () => {
+//     const posts = fetchMarkdownPosts();
+//     expect(posts).toBeInstanceOf(Array);
+//   });
+// });

@@ -1,14 +1,19 @@
+<script>
+  import "../app.css";
+  import "../prism-twilight.css"
+</script>
+
 <head>
   <title>My Blog</title>
-  <link rel="stylesheet" href="/style.css" />
+  <!-- <link rel="stylesheet" href="/style.css" /> -->
 </head>
 
 <header>
   <div class="topnav">
     <a class="title" href="/">{"{"}{"{"} BinayakD {"}"}{"}"}</a>
     <div class="topnav-right">
-      <a href="#search" target="_blank">About</a>
-      <a href="https://github.com/binayakd" target="_blank">Github</a>
+      <a href="" target="_blank" rel="noreferrer">About</a>
+      <a href="https://github.com/binayakd" target="_blank" rel="noreferrer">Github</a>
     </div>
   </div>
 </header>

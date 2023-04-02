@@ -2,7 +2,6 @@
 title: I Used Chatgpt to Create This Blog
 date: 2023-03-01
 ---
-
 # I Used Chatgpt to Create This Blog
 
 ## Or How I Learnt to Stop Worrying and Milk The AI Hype
@@ -87,3 +86,7 @@ I then asked about how to do layouts in Sveltkit. ChatGPT gave a pretty good run
 With all this conflicting information, I googled the difference between `+page.svelte` and `index.svelte.ts`, and found a [reddit post](https://www.reddit.com/r/sveltejs/comments/wytxl2/why_did_sveltekit_adopt_the_pagesvelte_routing/) and huge [github issue](https://github.com/sveltejs/kit/discussions/5748), that seem to suggest there was a bit update for Sveltkit v1.0.
 
 Bottom line, ChatGPT seems to have outdated data. Which makes sense its side to only been trained on data until 2021, and does not have access to Internet.
+
+
+https://joshcollinsworth.com/blog/build-static-sveltekit-markdown-blog
+https://css-tricks.com/syntax-highlighting-prism-on-a-next-js-site/

@@ -1,6 +1,6 @@
 <script lang='ts'>
   import { onMount } from 'svelte'
-  import { createThreeDSphere  } from '../lib/sphere';
+  import { createThreeDSphere  } from '$lib/sphere';
 
   let canvas: HTMLCanvasElement;
 

@@ -5,4 +5,7 @@
 </script>
 
 <h1>{data.title}</h1>
-<div>{@html data.content}</div>
+<p>{data.date}</p>
+<div>
+  <svelte:component this={data.content} />
+</div>
