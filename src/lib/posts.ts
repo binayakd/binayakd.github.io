@@ -5,6 +5,8 @@ import { marked } from 'marked';
 import hljs from "highlight.js";
 import DOMPurify from 'dompurify';
 
+
+const POSTS_DIR_PATH = "../../posts"
 const POSTS_PER_PAGE = 10;
 
 export interface PostData {
@@ -13,6 +15,24 @@ export interface PostData {
   date: string;
   excerpt: string;
   content: string;
+}
+
+export async function getPostDataBySlug(slug: string){
+  const year = slug.split("-")[0]
+  const post = await import(`${POSTS_DIR_PATH}/${year}/${slug}.md`)
+  const { title, date } = post.metadata
+  const content = post.default
+
+  const postData: PostData = {
+    slug: slug,
+    title: title,
+    date: date,
+    excerpt: content.split('\n')[0],
+    content: content
+  }
+
+  return postData
+
 }
 
 export function getPosts(dir: string): PostData[] {
@@ -76,23 +96,3 @@ export const parseMarkdown = (text: string): string => {
 
   return DOMPurify.sanitize(marked.parse(text));
 };
-
-
-// export const fetchMarkdownPosts = async () => {
-//   const allPostFiles = import.meta.glob('/posts/**/*.md')
-//   const iterablePostFiles = Object.entries(allPostFiles)
-  
-//   const allPosts = await Promise.all(
-//     iterablePostFiles.map(async ([path, resolver]) => {
-//       const { metadata } = await resolver()
-//       const postPath = path.slice(11, -3)
-
-//       return {
-//         meta: metadata,
-//         path: postPath,
-//       }
-//     })
-//   )
-
-//   return allPosts
-// }

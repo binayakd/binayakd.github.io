@@ -16,15 +16,26 @@ import { getPostBySlug } from '$lib/posts';
 // }) satisfies PageLoad;
 
 
+// export async function load({ params }){
+//   const year = params.slug.split("-")[0]
+//   const post = await import(`../../../../posts/${year}/${params.slug}.md`)
+//   const { title, date } = post.metadata
+//   const content = post.default
+
+//   return {
+//     content,
+//     title,
+//     date,
+//   }
+// }
+
 export async function load({ params }){
-  const year = params.slug.split("-")[0]
-  const post = await import(`../../../../posts/${year}/${params.slug}.md`)
-  const { title, date } = post.metadata
-  const content = post.default
+  const postData = getPostBySlug(params.slug)
 
   return {
-    content,
-    title,
-    date,
-  }
+    title: postData.title,
+    date: postData.date,
+    content: postData.content
+  };
+
 }
