@@ -30,6 +30,7 @@
 	"type": "module",
 	"dependencies": {
 		"dompurify": "^3.0.1",
+		"glob": "^9.3.4",
 		"gray-matter": "^4.0.3",
 		"highlight.js": "^11.7.0",
 		"markdown-it": "^13.0.1",

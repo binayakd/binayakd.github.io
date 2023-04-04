@@ -1,9 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import matter from 'gray-matter';
-import { marked } from 'marked';
-import hljs from "highlight.js";
-import DOMPurify from 'dompurify';
+import glob from 'glob';
+
 
 
 const POSTS_DIR_PATH = "../../posts"
@@ -32,3 +30,11 @@ export async function getPostDataBySlug(slug: string){
   return postData
 
 }
+
+export async function getAllPostSlugs() {
+  // const results = await glob(`${POSTS_DIR_PATH}/**/*.md`)
+  const results = await glob("posts/**/*.md")
+  const slugList = results.map(x => path.parse(x).base)
+  return slugList
+}
+

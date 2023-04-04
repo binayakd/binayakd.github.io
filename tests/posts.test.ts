@@ -1,9 +1,9 @@
-import { getPosts} from '../src/lib/posts'
+import { getAllPostSlugs } from '../src/lib/posts'
 
 
-describe("getPosts function", () => {
-  it("returns arrays of posts", () => {
-    const posts = getPosts("./posts");
+describe("getAllPostSlugs function", () => {
+  it("returns arrays of post slugs", async () => {
+    const posts = await getAllPostSlugs();
     expect(posts).toBeInstanceOf(Array);
   });
 });
