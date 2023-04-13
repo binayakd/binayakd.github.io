@@ -1,4 +1,4 @@
-import { getAllPostSlugs } from '../src/lib/posts'
+import { getAllPostSlugs, getPostDataBySlug } from '../src/lib/posts'
 
 
 describe("getAllPostSlugs function", () => {
@@ -8,9 +8,3 @@ describe("getAllPostSlugs function", () => {
   });
 });
 
-// describe("fetchMarkdownPosts function", () => {
-//   it("returns arrays of posts", () => {
-//     const posts = fetchMarkdownPosts();
-//     expect(posts).toBeInstanceOf(Array);
-//   });
-// });

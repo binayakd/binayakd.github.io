@@ -1,9 +1,7 @@
 ---
 title: I Used Chatgpt to Create This Blog
-date: 2023-03-01
+date: '2023-03-01'
 ---
-# I Used Chatgpt to Create This Blog
-
 ## Or How I Learnt to Stop Worrying and Milk The AI Hype
 
 I have wanted to create a proper tech blog for a long time. I have also wanted to learn some Javascript/Typescript and some type of frontend framework for a long time. After a few false starts with ReactJs and NextJs, I heard about the shiny new thing called Svelt and Sveltkit. And then this Chatgpt stuff got hot, so I though why not take advantage of it.
