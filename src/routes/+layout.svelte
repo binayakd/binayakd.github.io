@@ -12,7 +12,7 @@
   <div class="topnav">
     <a class="title" href="/">{"{"}{"{"} BinayakD {"}"}{"}"}</a>
     <div class="topnav-right">
-      <a href="" target="_blank" rel="noreferrer">About</a>
+      <a href="/">About</a>
       <a href="https://github.com/binayakd" target="_blank" rel="noreferrer">Github</a>
     </div>
   </div>
@@ -27,7 +27,7 @@
 <div class="nav-separator" />
 
 <footer>
-  <p>&copy; 2023 My Blog</p>
+  <p>&copy; 2023 Binayak Dasgupta</p>
 </footer>
 
 <style>

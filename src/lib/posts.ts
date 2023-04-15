@@ -1,8 +1,5 @@
 import fs from 'fs';
-import path from 'path';
 
-
-const POSTS_DIR_PATH = "./posts"
 const POSTS_PER_PAGE = 10;
 
 export interface PostData {
@@ -12,11 +9,15 @@ export interface PostData {
   content: string;
 }
 
-export async function getPostDataBySlug(slug: string){
+export async function getPostDataBySlug(slug: string, withContent: boolean){
   const year = slug.split("-")[0]
-  const post = await import(/* @vite-ignore */`${POSTS_DIR_PATH}/${year}/${slug}.md`)
+  const post = await import(/* @vite-ignore */`../../posts/${year}/${slug}.md`)
   const { title, date } = post.metadata
-  const content = post.default
+  var content =  null
+  if (withContent){
+    content = post.default
+  }
+  
 
   const postData: PostData = {
     slug: slug,
@@ -29,24 +30,17 @@ export async function getPostDataBySlug(slug: string){
 
 }
 
-// export async function getAllPostSlugs() {
-//   // const results = await glob(`${POSTS_DIR_PATH}/**/*.md`)
-//   const results = await glob("posts/**/*.md")
-//   const slugList = results.map(x => path.parse(x).base)
-//   return slugList
-// }
-
-export async function getAllPostSlugs() {
+export function getAllPostSlugs() {
   const allSlugs: string[] = []
-  
-  fs.readdir(POSTS_DIR_PATH, (err, yearPaths) => {
-    yearPaths.forEach(year => {
-      fs.readdir(`${POSTS_DIR_PATH}/${year}`, (err, postPath) =>{
 
-      });
-    });
+  const yearPaths = fs.readdirSync("./posts")
+  yearPaths.forEach(year => {
+    const postPaths = fs.readdirSync(`./posts/${year}`)
+    postPaths.forEach(postPath => {
+      allSlugs.push(postPath.split(".")[0])
+    })
   });
-
+  
   return allSlugs
 
 }

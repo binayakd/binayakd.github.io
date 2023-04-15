@@ -1,6 +1,9 @@
 <script lang='ts'>
   import { onMount } from 'svelte'
   import { createThreeDSphere  } from '$lib/sphere';
+  import type { PageData } from './$types';
+  
+  export let data: PageData;
 
   let canvas: HTMLCanvasElement;
 
@@ -21,6 +24,18 @@
       I'm Binayak Dasgupta, a software/data/devops engineer. Here is where I ramble and try new things.
     </p>  
   </div>
+</div>
+
+<!-- <div class="nav-separator" /> -->
+
+<div>
+  <h2>Posts</h2>
+  {#each data.postDataList as postData}
+  <a href="/posts/{postData.slug}">
+    <h3>{postData.title}</h3>
+    <p>{postData.date}</p>
+  </a>
+  {/each}
 </div>
 
 <style>
