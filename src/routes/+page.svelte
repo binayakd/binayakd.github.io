@@ -30,12 +30,17 @@
 
 <div>
   <h2>Posts</h2>
-  {#each data.postDataList as postData}
-  <a href="/posts/{postData.slug}">
-    <h3>{postData.title}</h3>
-    <p>{postData.date}</p>
-  </a>
-  {/each}
+  <ul>
+    {#each data.posts as postData}
+    <li>
+      <a href="/posts/{postData.slug}">
+        {postData.title}<br>
+        {postData.date}
+      </a>
+    </li>
+    {/each}
+  </ul>
+
 </div>
 
 <style>

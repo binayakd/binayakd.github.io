@@ -1,10 +1,12 @@
 /* @import url('https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Roboto:wght@100;400&display=swap'); */
-@import url('https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@100;400&display=swap');
+/* @import url('https://fonts.googleapis.com/css2?family=VT323&family=Roboto:wght@100;400&display=swap'); */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
 
 body {
   background-color: #000000;
   color: #fff;
-  font-family: monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 16px;
   line-height: 1.4;
   max-width: 900px;

@@ -18,13 +18,13 @@
   </div>
 </header>
 
-<div class="nav-separator" />
+<!-- <div class="nav-separator" /> -->
 
 <main>
   <slot />
 </main>
 
-<div class="nav-separator" />
+<!-- <div class="nav-separator" /> -->
 
 <footer>
   <p>&copy; 2023 Binayak Dasgupta</p>

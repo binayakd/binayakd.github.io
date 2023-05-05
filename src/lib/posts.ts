@@ -18,7 +18,6 @@ export async function getPostDataBySlug(slug: string, withContent: boolean){
     content = post.default
   }
   
-
   const postData: PostData = {
     slug: slug,
     title: title,
@@ -40,7 +39,17 @@ export function getAllPostSlugs() {
       allSlugs.push(postPath.split(".")[0])
     })
   });
-  
   return allSlugs
 
+}
+
+export async function getAllPostData() {
+  const postDataList: PostData[] = []
+  const allSlugs = getAllPostSlugs();
+
+  for (const slug of allSlugs) {
+    const postData = await getPostDataBySlug(slug, false)
+    postDataList.push(postData)
+  }
+  return postDataList
 }
