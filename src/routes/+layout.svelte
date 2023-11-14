@@ -1,36 +1,61 @@
 <script>
+  import "terminal.css";
   import "../app.css";
   import "../prism-twilight.css"
 </script>
 
 <head>
-  <title>My Blog</title>
-  <!-- <link rel="stylesheet" href="/style.css" /> -->
+  <title>BinayakD</title>
 </head>
 
-<header>
-  <div class="topnav">
-    <a class="title" href="/">{"{"}{"{"} BinayakD {"}"}{"}"}</a>
-    <div class="topnav-right">
-      <a href="/">About</a>
-      <a href="https://github.com/binayakd" target="_blank" rel="noreferrer">Github</a>
-    </div>
+<div class="container">
+  <div class="terminal-nav">
+    <header class="terminal-logo">
+      <div class="topnav">
+        <div class="logo terminal-prompt">
+          <a class="no-style" href="/">{"{"}{"{"} BinayakD {"}"}{"}"}</a>
+        </div>
+      </div>
+    </header>
+        
+    <nav class="terminal-menu">
+      <ul vocab="https://schema.org/" typeof="BreadcrumbList">
+        <li property="itemListElement" typeof="ListItem">
+          <a href="/" property="item" typeof="WebPage" class="menu-item">
+            <span property="name">About</span>
+          </a>
+        </li>
+        <li property="itemListElement" typeof="ListItem">
+
+          <a href="https://github.com/binayakd" property="item" typeof="WebPage" class="menu-item" target="_blank" rel="noreferrer">
+            <span property="name">Github</span>
+          </a>
+          <meta property="position" content="1">
+          </li>
+      </ul>
+    </nav>
+  
   </div>
-</header>
+</div>
+
 
 <!-- <div class="nav-separator" /> -->
-
-<main>
+<div class="container">
+  <main>
   <slot />
 </main>
 
+</div>
+
 <!-- <div class="nav-separator" /> -->
+<div class="container">
+  <footer>
+    <p>&copy; 2023 Binayak Dasgupta</p>
+  </footer>
+</div>
 
-<footer>
-  <p>&copy; 2023 Binayak Dasgupta</p>
-</footer>
 
-<style>
+<!-- <style>
   .topnav {
     overflow: hidden;
     padding-top: 20px;
@@ -68,4 +93,4 @@
   a.title {
     font-size: 25px;
   }
-</style>
+</style> -->

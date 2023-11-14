@@ -14,7 +14,7 @@
 </script>
 
 
-<div class="container">
+<div class="main-container">
   <div class="sphere-container">
     <canvas bind:this={canvas} />
   </div>
@@ -28,23 +28,25 @@
 
 <!-- <div class="nav-separator" /> -->
 
-<div>
-  <h2>Posts</h2>
-  <ul>
-    {#each data.posts as postData}
-    <li>
-      <a href="/posts/{postData.slug}">
-        {postData.title}<br>
-        {postData.date}
-      </a>
-    </li>
-    {/each}
-  </ul>
-
+<div class="container">
+  <div>
+    <h2>Posts</h2>
+    <ul>
+      {#each data.posts as postData}
+      <li>
+        <a href="/posts/{postData.slug}">
+          {postData.date} - {postData.title}
+        </a>
+      </li>
+      {/each}
+    </ul>
+  
+  </div>
+  
 </div>
 
 <style>
-  .container {
+  .main-container {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -52,13 +54,13 @@
   }
 
   .sphere-container {
-    width: 300px;
+    /* width: 300px; */
     display: flex;
     justify-content: center;
   }
 
   .intro-container {
-    width: 600px;
+    /* width: 600px; */
     padding: 0 50px;
   }
 </style>

@@ -18,7 +18,7 @@ export function createThreeDSphere(canvas: HTMLCanvasElement) {
   const sphereGeometry = new THREE.SphereGeometry(5, 10, 10);
   const sphereMaterial = new THREE.MeshBasicMaterial({
     wireframe: true,
-    color: "#00ff00",
+    color: "#62c4ff",
   });
   const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 
@@ -29,7 +29,7 @@ export function createThreeDSphere(canvas: HTMLCanvasElement) {
   const renderer = new THREE.WebGLRenderer({ canvas });
 
   // Set the background color of the renderer
-  // renderer.setClearColor("#333");
+  renderer.setClearColor("#222225");
 
   // Define the animate function
   function animate() {

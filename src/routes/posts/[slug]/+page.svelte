@@ -8,3 +8,4 @@
 <div>
   <svelte:component this={data.content} />
 </div>
+
