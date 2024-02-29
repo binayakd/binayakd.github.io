@@ -45,7 +45,7 @@ summaryLength = 20  # number of words for article summaries
     fitImageInArticlePreview = false  # make article preview images fit the article preview instead of getting cropped
     articleSummary = true  # show a summary in article preview; default true
     
-    fontFamily = "JetBrains Mono"  # changes the font, default "JetBrains Mono"
+    fontFamily = "Roboto Mono"  # changes the font, default "JetBrains Mono"
     titleFontFamily = "JetBrains Mono"  # font used for titles and headings
     monospaceFontFamily = "JetBrains Mono"  # changes the monospace font for code, default "JetBrains Mono"
 

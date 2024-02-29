@@ -3,10 +3,10 @@ auto_switch: false  # set to true to respect the user preference
 dark:
   bg: '#2e3440'  # main site background
   hl_bg: '#3b4252'  # card and circle navigation background color for paper card mode
-  fg: '#eceff4'  # font color
-  dim_fg: '#4c566a'  # will be used for secondary information like dates and tags
-  stroke: '#d8dee9'  # stroke/border color used mostly in the icon menu tooltip
-  accent: '#d8dee9'  # pervasive accent color
+  fg: '#d8dee9'  # font color
+  dim_fg: '#88c0d0'  # will be used for secondary information like dates and tags
+  stroke: '#88c0d0'  # stroke/border color used mostly in the icon menu tooltip
+  accent: '#88c0d0'  # pervasive accent color
   sidebar:
     bg: '#2e3440'  # sidebar background
     fg: '#eceff4'  # sidebar font color
