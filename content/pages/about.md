@@ -1,25 +1,14 @@
 +++
 title = "About"
-description = "Hugo, the world's fastest framework for building websites"
-date = "2019-02-28"
-aliases = ["about-us", "about-hugo", "contact"]
-author = "Hugo Authors"
+date = "2024-03-02"
+author = "Binayak"
 +++
 
-Written in Go, Hugo is an open source static site generator available under the [Apache Licence 2.0.](https://github.com/gohugoio/hugo/blob/master/LICENSE) Hugo supports TOML, YAML and JSON data file types, Markdown and HTML content files and uses shortcodes to add rich content. Other notable features are taxonomies, multilingual mode, image processing, custom output formats, HTML/CSS/JS minification and support for Sass SCSS workflows.
+Hi! I am Binayak Dasgupta, currently working as a lead software developer in Standard Chartered Bank Singapore. My tech career started after completed my PhD in Material Science, in 2017, which I swiftly abandoned to take an entry level position as in tech. 
 
-Hugo makes use of a variety of open source projects including:
+I went from test automation engineer, to Java developer, to DevOps, to finally Lead Developer working on software development, DevOps and data engineering projects, working with mostly Java and Python. 
 
-* https://github.com/yuin/goldmark
-* https://github.com/alecthomas/chroma
-* https://github.com/muesli/smartcrop
-* https://github.com/spf13/cobra
-* https://github.com/spf13/viper
+This blog is where I will ramble about some interesting tech challenges and situations that I have encountered, and my attempt to solving them. This blog will also be a place where I experiment, and try out stuff, so if stuff breaks, please bear with me. 
 
-Hugo is ideal for blogs, corporate websites, creative portfolios, online magazines, single page applications or even a website with thousands of pages.
+You can reach out to me though [Linkedin](https://www.linkedin.com/in/dasguptabinayak/) or email: `binayakd86 at gmail dot com`
 
-Hugo is for people who want to hand code their own website without worrying about setting up complicated runtimes, dependencies and databases.
-
-Websites built with Hugo are extremely fast, secure and can be deployed anywhere including, AWS, GitHub Pages, Heroku, Netlify and any other hosting provider.
-
-Learn more and contribute on [GitHub](https://github.com/gohugoio).
