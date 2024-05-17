@@ -1,8 +1,8 @@
-+++
-title = "About"
-date = "2024-03-02"
-author = "Binayak"
-+++
+---
+title: "About"
+date: 2024-03-02
+author: "Binayak"
+---
 
 Hi! I am Binayak Dasgupta, currently working as a lead software developer in Standard Chartered Bank Singapore. My tech career started after completed my PhD in Material Science, in 2017, which I swiftly abandoned to take an entry level position as in tech. 
 

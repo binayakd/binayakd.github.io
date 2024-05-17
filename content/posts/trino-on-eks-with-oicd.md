@@ -1,18 +1,9 @@
 ---
 title: Trino on AWS EKS with IAM/IRSA
-date: '2024-04-25'
+date: 2024-04-25
 ---
 
-#### Table of Contents
-
-- [Introduction](#introduction)
-- [Container Images](#container-images)
-- [Center](#center)
-- [Color](#color)
-
----
-
-# Introduction {#introduction}
+## Introduction {#introduction}
 
 The problem statement is to be able run SQL queries on parquet data in AWS S3. And given we have an AWS EKS cluster running, we can setup a Trino cluster and hive standalone metastore, which has been [well documented](https://trino.io/blog/2020/10/20/intro-to-hive-connector.html).
 
@@ -22,9 +13,7 @@ In this post, I will walkthrough the setup process, using mostly Terraform (or T
 
 The full code can found in [Github](https://github.com/binayakd/trino-on-eks/tree/main).
 
----
-
-# Container Images {#container-images}
+## Container Images {#container-images}
 
 The Trino team provides official [container images](https://hub.docker.com/r/trinodb/trino) and [Helm chart](https://trino.io/docs/current/installation/kubernetes.html) we can use, so we are covered there (we will be using them later), but there is no official Hive Standalone Metastore images. The most updated one I could fined was in this [EMR on EKS](https://github.com/aws-samples/hive-emr-on-eks/tree/main/docker) example. 
 
