@@ -1,4 +1,4 @@
-baseURL: ""
+baseURL: "/"
 title: BinayakD
 paginate: 5
 theme: PaperMod
@@ -45,11 +45,11 @@ params:
   assets:
     # disableHLJS: true # to disable highlight.js
     # disableFingerprinting: true
-    favicon: "<link / abs url>"
-    favicon16x16: "<link / abs url>"
-    favicon32x32: "<link / abs url>"
-    apple_touch_icon: "<link / abs url>"
-    safari_pinned_tab: "<link / abs url>"
+    # favicon: "<link / abs url>"
+    # favicon16x16: "<link / abs url>"
+    # favicon32x32: "<link / abs url>"
+    # apple_touch_icon: "<link / abs url>"
+    # safari_pinned_tab: "<link / abs url>"
 
   label:
     text: "BinayakD"
@@ -73,14 +73,15 @@ params:
 
   # home-info mode
   homeInfoParams:
-    Title: "Hi there \U0001F44B"
-    Content: Welcome to my blog
+    Title: "Hi there, I am Binayak"
+    Content: This is where I ramble about Dev, Data and DevOps
 
   socialIcons:
-    - name: Linkedin
-      url: "https://sg.linkedin.com/in/dasguptabinayak"
     - name: github
       url: "https://github.com/binayakd"
+    - name: Linkedin
+      url: "https://sg.linkedin.com/in/dasguptabinayak"
+
 
   analytics:
     google:
@@ -113,18 +114,23 @@ params:
     keys: ["title", "permalink", "summary", "content"]
 menu:
   main:
-    - identifier: categories
-      name: categories
-      url: /categories/
+    - identifier: about
+      name: about
+      url: /about/
       weight: 10
-    - identifier: tags
-      name: tags
-      url: /tags/
-      weight: 20
-    - identifier: example
-      name: example.org
-      url: https://example.org
+    - identifier: archives
+      name: archives
+      url: /archives/
+      weight: 15
+    - identifier: github
+      name: github
+      url: https://github.com/binayakd
       weight: 30
+    - identifier: linkedin
+      name: linkedin
+      url: https://sg.linkedin.com/in/dasguptabinayak
+      weight: 20
+
 # Read: https://github.com/adityatelange/hugo-PaperMod/wiki/FAQs#using-hugos-syntax-highlighter-chroma
 pygmentsUseClasses: true
 markup:
