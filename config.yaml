@@ -1,4 +1,4 @@
-baseURL: "https://binayakd.tech/"
+baseURL: "/"
 title: BinayakD
 paginate: 5
 theme: PaperMod
@@ -12,7 +12,7 @@ mainsections: ["posts"]
 
 minify:
   disableXML: true
-  minifyOutput: true
+  minifyOutput: false
 
 params:
   env: production # to enable google analytics, opengraph, twitter-cards and schema.
