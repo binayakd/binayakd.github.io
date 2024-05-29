@@ -1,6 +1,6 @@
 ---
 title: "About"
-date: 2024-03-02
+date: 2024-06-01
 author: "Binayak"
 ---
 

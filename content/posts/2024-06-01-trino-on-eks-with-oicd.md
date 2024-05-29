@@ -1,6 +1,6 @@
 ---
 title: Trino on AWS EKS with IAM/IRSA
-date: 2024-05-25
+date: 2024-06-01
 ---
 
 ## Introduction
