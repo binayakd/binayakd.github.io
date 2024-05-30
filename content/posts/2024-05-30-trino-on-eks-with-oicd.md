@@ -1,6 +1,6 @@
 ---
 title: Trino on AWS EKS with IAM/IRSA
-date: 2024-05-24
+date: 2024-05-30
 ---
 
 ## Introduction
@@ -179,16 +179,31 @@ terraform {
 
 And set up the input variables in `variables.tf` (with descriptions):
 ```terraform
-variable "enable_eks" {
-  type    = bool
-  default = true
-  description = "Turn on or off the EKS resources"
+variable "name" {
+  type        = string
+  description = "Common name of the S3 bucket, EKS cluster, RDS instance and other resources"
 }
 
-variable "enable_rds" {
-  type    = bool
-  default = true
-  description = "Turn on or off the RDS resources"
+variable "region" {
+  type        = string
+  description = "AWS region to use"
+}
+
+variable "vpc_cidr" {
+  type        = string
+  description = "VPC CIDR block to use"
+
+}
+
+variable "kube_namespace_name" {
+  type        = string
+  description = "Kubernetes Namespace name where the Trino and Metastore deployments will be done to"
+
+}
+
+variable "kube_sa_name" {
+  type        = string
+  description = "Kubernetes Service account name, which will be used to access S3 using IAM/IRSA"
 }
 
 variable "cluster_endpoint_public_access_cidrs" {
@@ -197,11 +212,37 @@ variable "cluster_endpoint_public_access_cidrs" {
 }
 
 variable "kubeconfig_location" {
-  type = string
+  type        = string
   description = "Location to save the Kubeconfig file to"
+}
+
+variable "enable_eks" {
+  type        = bool
+  default     = true
+  description = "Turn on or off the EKS resources"
+}
+
+variable "enable_rds" {
+  type        = bool
+  default     = true
+  description = "Turn on or off the RDS resources"
 }
 ```
 For the variable `cluster_endpoint_public_access_cidrs`, we need to specify the CIDR blocks/IP addresses of the machines from which we need be able to connect to the EKS API endpoint (to run kubectl commands). This connection would be needed to deploy the Kubernetes resources later. So we should put in the CIDR block/IP address of the machine that we are using ot run these terraform scripts from. We would also be reusing this to allow IPs that can access the Metastore RDS instance.
+
+This is the example `terraform.tfvars` I used to set the variable values (this file should not be committed to git, as per best practices):
+```terraform
+name                                 = "trino-on-eks"
+region                               = "ap-southeast-1"
+vpc_cidr                             = "10.0.0.0/24"
+kube_namespace_name                  = "trino"
+kube_sa_name                         = "s3-access"
+cluster_endpoint_public_access_cidrs = ["your_ip_here/32"]
+kubeconfig_location                  = "../../local/kubeconfig.yaml"
+enable_eks                           = true
+enable_rds                           = true
+```
+Of course do put in your own IP for `cluster_endpoint_public_access_cidrs`.
 
 All the main resources are defined in the `main.tf` file, 
 
@@ -210,30 +251,21 @@ First we get the information of all the availability zones (azs) in the our regi
 data "aws_availability_zones" "available" {}
 ```
 
-Then we setup the common values in locals calculate the CIDR blocks for the azs using the azs information:
-
+Then we calculate the CIDR blocks for the azs using the azs information, and setup the common tags in the locals:
 ```terraform
 locals {
-  name   = "trino-on-eks"
-  region = "ap-southeast-1"
-
-  vpc_cidr = "10.0.0.0/24"
-  azs      = slice(data.aws_availability_zones.available.names, 0, 3)
-
-  kube_namespace = "trino"
-  kube_sa_name = "s3-access"
+  azs = slice(data.aws_availability_zones.available.names, 0, 3)
 
   tags = {
-    role = "trino-on-eks"
+    role = var.name
   }
 }
 ```
-Technically these values could come from variables (which is definitely something you can set them up to be) but in my case these values don't 'vary' every deployment, hence setting them as locals.
 
 Then we setup the AWS provider with the region value from locals:
 ```terraform
 provider "aws" {
-  region = local.region
+  region = var.region
 }
 ```
 
@@ -242,10 +274,11 @@ provider "aws" {
 For the S3 resource, we first setup the main S3 bucket:
 ```terraform
 resource "aws_s3_bucket" "trino_on_eks" {
-  bucket = local.name
-  tags = local.tags
+  bucket = var.name
+  tags   = local.tags
 }
 ```
+
 We then create the policy document which specifies read/write and list permission on that bucket only:
 ```terraform
 data "aws_iam_policy_document" "trino_s3_access" {
@@ -278,16 +311,17 @@ resource "aws_iam_policy" "trino_s3_access_policy" {
 This policy will be how the service in EKS (Trino and Hive metastore) will get access to the S3 bucket, as we will see later.
 
 ### VPC
+
 Using the [VPC module](https://registry.terraform.io/modules/terraform-aws-modules/vpc/aws/latest) we create the VPC, using the values from locals:
 ```terraform
 module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = local.name
-  cidr = local.vpc_cidr
+  name = var.name
+  cidr = var.vpc_cidr
 
   azs                     = local.azs
-  public_subnets          = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]
+  public_subnets          = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 4, k)]
   enable_dns_support      = true
   enable_dns_hostnames    = true
   map_public_ip_on_launch = true
@@ -308,7 +342,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "~> 20.0"
 
-  cluster_name    = local.name
+  cluster_name    = var.name
   cluster_version = "1.29"
 
   cluster_endpoint_private_access      = true
@@ -361,7 +395,7 @@ module "trino_s3_access_irsa" {
   role_name                     = "trino_s3_access_role"
   provider_url                  = module.eks[0].oidc_provider
   role_policy_arns              = [aws_iam_policy.trino_s3_access_policy.arn]
-  oidc_fully_qualified_subjects = ["system:serviceaccount:${local.kube_namespace}:${local.kube_sa_name}"]
+  oidc_fully_qualified_subjects = ["system:serviceaccount:${var.kube_namespace_name}:${var.kube_sa_name}"]
 }
 ```
 This assigns the service account specified in `locals.kube_sa_name` in the namespace specified in `local.kube_namespace` the permissions to assume this created role (through the cluster's OIDC provider), which in turn has been assigned the S3 bucket access polices created before.
@@ -413,12 +447,12 @@ resource "local_sensitive_file" "kubeconfig" {
     cluster_name = module.eks[0].cluster_name,
     clusterca    = module.eks[0].cluster_certificate_authority_data,
     endpoint     = module.eks[0].cluster_endpoint,
-    region       = local.region
+    region       = var.region
   })
   filename = var.kubeconfig_location
 }
 ```
-The location where this is saved to is set by the variable `kubeconfig_location`. Do we careful not to save it where it might get accidentally committed and pushed to git.
+The location where this is saved to is set by the variable `kubeconfig_location`. Do be careful not to save it where it might get accidentally committed and pushed to git.
 
 ### RDS Resources for Metastore
 
@@ -436,7 +470,7 @@ resource "aws_secretsmanager_secret" "rds_password" {
 }
 
 resource "aws_secretsmanager_secret_version" "rds_password" {
-  secret_id = aws_secretsmanager_secret.rds_password.id
+  secret_id     = aws_secretsmanager_secret.rds_password.id
   secret_string = random_password.rds_password.result
 }
 ```
@@ -444,13 +478,13 @@ resource "aws_secretsmanager_secret_version" "rds_password" {
 Then we setup the DB subnets, which is basically the public subnets of the VPC we created:
 ```terraform
 resource "aws_db_subnet_group" "trino_on_eks" {
-  name       = local.name
+  name       = var.name
   subnet_ids = module.vpc.public_subnets
 
   tags = local.tags
 }
 ```
-Similar to our EKS cluster, we are putting the RDS instance in the public subnet, for simplify can cost. We should ideally be putting this too in a private subnet behind a NAT gateway.
+Similar to our EKS cluster, we are putting the RDS instance in the public subnet, for simplicity and cost. We should ideally be putting this too in a private subnet behind a NAT gateway.
 
 Then we setup the security group which should only allow ingress from within the VPC, and from our own machine (to query the RDS to check). Thus the ingress CIDR blocks will be combination of the VPC CIDR and reusing the variable `cluster_endpoint_public_access_cidrs` for the local machine:
 ```terraform
@@ -462,7 +496,7 @@ resource "aws_security_group" "trino_on_eks_rds" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = concat([locals.vpc_cidr], var.cluster_endpoint_public_access_cidrs)
+    cidr_blocks = concat([var.vpc_cidr], var.cluster_endpoint_public_access_cidrs)
   }
 
   egress {
@@ -478,7 +512,7 @@ resource "aws_security_group" "trino_on_eks_rds" {
 Then we setup some DB parameter:
 ```terraform
 resource "aws_db_parameter_group" "trino_on_eks_rds" {
-  name   = local.name
+  name   = var.name
   family = "postgres16"
 
   parameter {
@@ -492,7 +526,7 @@ and finally the RDS instance itself:
 resource "aws_db_instance" "trino_on_eks_rds" {
   count = var.enable_rds ? 1 : 0
 
-  identifier             = local.name
+  identifier             = var.name
   instance_class         = "db.t4g.micro"
   allocated_storage      = 10
   engine                 = "postgres"
@@ -538,14 +572,8 @@ We don't we have any variables for this part, as all the input information will 
 
 ```terraform
 locals {
-  name   = "trino-on-eks"
-  region = "ap-southeast-1"
-
-  kube_namespace = "trino"
-  kube_sa_name = "s3-access"
-
   tags = {
-    role = "trino-on-eks"
+    role = var.name
   }
 }
 ```
@@ -554,11 +582,11 @@ Then, with the AWS provider, we get the following info:
 1. EKS cluster general and auth info:
 ```terraform
 data "aws_eks_cluster" "trino_on_eks" {
-  name = local.name
+  name = var.name
 }
 
 data "aws_eks_cluster_auth" "trino_on_eks" {
-  name = local.name
+  name = var.name
 }
 ```
 2. Info about the role that can be used to access the S3 bucket
@@ -571,7 +599,7 @@ data "aws_iam_role" "trino_s3_access_role" {
 3. RDS DB general and auth information:
 ```terraform
 data "aws_db_instance" "trino_on_eks_rds" {
-  db_instance_identifier = local.name
+  db_instance_identifier = var.name
 }
 
 data "aws_secretsmanager_secret" "rds_password" {
@@ -606,7 +634,7 @@ The namespace is the first kubernetes resource we create, to hold all the other 
 ```terraform
 resource "kubernetes_namespace" "trino" {
   metadata {
-    name = local.kube_namespace
+    name = var.kube_namespace_name
   }
 }
 ```
@@ -617,10 +645,10 @@ Then we create the service account, which will be the once that will assume the 
 
 ```terraform
 resource "kubernetes_service_account" "trino_s3_access_sa" {
-  depends_on = [ kubernetes_namespace.trino ]
+  depends_on = [kubernetes_namespace.trino]
   metadata {
-    name = local.kube_sa_name
-    namespace = local.kube_namespace
+    name      = var.kube_sa_name
+    namespace = var.kube_namespace_name
 
     annotations = {
       "eks.amazonaws.com/role-arn" = data.aws_iam_role.trino_s3_access_role.arn
@@ -638,45 +666,44 @@ We will now deploy the Metastore using a Helm chart, which in the repo can be fo
 
 We will use the `helm_release` Terraform resource to deploy it, with the appropriate values:
 ```terraform
-
 resource "helm_release" "metastore" {
-  depends_on = [ kubernetes_service_account.trino_s3_access_sa ]
+  depends_on = [kubernetes_service_account.trino_s3_access_sa]
 
-  name = "metastore"
-  namespace = local.kube_namespace
-  chart = "../../metastore/helm-chart"
+  name      = "metastore"
+  namespace = var.kube_namespace_name
+  chart     = "../../metastore/helm-chart"
 
   set {
-    name = "image"
+    name  = "image"
     value = "ghcr.io/binayakd/metastore:4.0.0-hadoop-3.4.0"
   }
 
   set {
-    name = "dbUrl"
+    name  = "dbUrl"
     value = "jdbc:postgresql://${data.aws_db_instance.trino_on_eks_rds.endpoint}/${data.aws_db_instance.trino_on_eks_rds.db_name}"
   }
   set {
-    name = "dbUser"
+    name  = "dbUser"
     value = data.aws_db_instance.trino_on_eks_rds.master_username
   }
 
-  set{
-    name = "dbPassword"
-    value = data.aws_secretsmanager_secret_version.rds_password.secret_string 
+  set {
+    name  = "dbPassword"
+    value = data.aws_secretsmanager_secret_version.rds_password.secret_string
   }
   set {
-    name = "dbDriver"
+    name  = "dbDriver"
     value = "org.postgresql.Driver"
   }
 
   set {
-    name = "s3Bucket"
+    name  = "s3Bucket"
     value = "s3://trino-on-eks"
   }
 
   set {
-    name = "serviceAccountName"
-    value = local.kube_sa_name
+    name  = "serviceAccountName"
+    value = var.kube_sa_name
   }
 }
 ```
@@ -706,10 +733,9 @@ Setting `fs.native-s3.enabled=true` allows Trino to directly access the files in
 
 With the values yaml setup, we can again use the `helm_release` resource to deploy the main Trino cluster:
 ```terraform
-
 resource "helm_release" "trino" {
-  name = "trino"
-  namespace = local.kube_namespace
+  name      = "trino"
+  namespace = var.kube_namespace_name
 
   repository = "https://trinodb.github.io/charts"
   chart      = "trino"
@@ -719,12 +745,16 @@ resource "helm_release" "trino" {
   ]
 
   set {
-    name = "serviceAccount.name"
-    value = local.kube_sa_name
+    name  = "serviceAccount.name"
+    value = var.kube_sa_name
   }
 }
 ```
 Again here we are additionally setting the service account to allow Trino access to the S3 bucket.
 
 With all that deployed we should have all the resources deployed for a working setup.
+
+### Testing the Setup
+
+First step is to check if all the Kube resources have are deployed properly and running
 
