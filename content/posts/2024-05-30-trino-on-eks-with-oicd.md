@@ -5,12 +5,13 @@ date: 2024-05-30
 
 ## Introduction
 
-Parquet data stored in object storage, like AWS S3 has become a standard practice in current data lake architecture. And using Trino, with Hive Standalone Metastore to query these data is also a very standard practice, as shown [here](https://trino.io/blog/2020/10/20/intro-to-hive-connector.html).
+Parquet data stored in object storage, like AWS S3, has become a standard practice in current data lake architecture. And using Trino with Hive Standalone Metastore to query these data is also a very standard practice, as shown [here](https://trino.io/blog/2020/10/20/intro-to-hive-connector.html).
 
-What is less well documented is how to deploy these services in a Kubernetes cluster (for example EKS), and adhere to security best practices when establishing the connection between Trino and S3. One way to do this is to use [IAM Roles for Service Accounts (IRSA)](https://aws.amazon.com/blogs/opensource/introducing-fine-grained-iam-roles-service-accounts/). This allows us to use a kubernetes service account (used by Trino) to get read/write access to specific S3 buckets, though an IAM policy setup. 
+What is less well documented is how to deploy these services in a Kubernetes cluster (for example EKS), and adhere to security best practices when establishing the connection between Trino and S3. One way to do this is to use [IAM Roles for Service Accounts (IRSA)](https://aws.amazon.com/blogs/opensource/introducing-fine-grained-iam-roles-service-accounts/). This allows us to use a kubernetes service account (used by Trino) to get read/write access to specific S3 buckets, through an IAM policy setup. 
 
-In this post, I will walk through the setup process, using mostly Terraform (or OpenTofu if you prefer) and Helm. I have taking heavy inspiration from [here](https://shipit.dev/posts/setting-up-eks-with-irsa-using-terraform.html).
+This post will guide you through the setup process using mostly Terraform (or OpenTofu if you prefer) and Helm. I have drawn heavy inspiration inspiration from [here](https://shipit.dev/posts/setting-up-eks-with-irsa-using-terraform.html).
 
+This walkthrough assume intermediate to advanced familiarly with Terraform (OpenTofu), Kubernetes and Helm. Some familiarly of the Trino setup will also be helpful.
 
 The full code can found in [Github](https://github.com/binayakd/trino-on-eks/tree/main).
 
@@ -18,13 +19,13 @@ The full code can found in [Github](https://github.com/binayakd/trino-on-eks/tre
 
 The Trino team provides official [container images](https://hub.docker.com/r/trinodb/trino) and [Helm chart](https://trino.io/docs/current/installation/kubernetes.html) we can use, so we are covered there (we will be using them later). but there is no official Hive Standalone Metastore container images. The most updated one I could fined was in this [EMR on EKS](https://github.com/aws-samples/hive-emr-on-eks/tree/main/docker) example. 
 
-So lets go though the process of creating the container image for the Hive Metastore we can use. In the repo the Dockerfile and the entry point script is in the folder: `metastore/image`
+So lets go through the process of creating the container image for the Hive Metastore we can use. In the repo the Dockerfile and the entry point script is in the folder: `metastore/image`
 
 As of April 2024, version 4.0.0 of Hive has been release, so we shall uses that (together with Hadoop v3.4.0) to make the image a bit more future-proof, and take advantage of [Hadoop upgrades to use AWS SDK v2](https://hadoop.apache.org/docs/stable/hadoop-aws/tools/hadoop-aws/aws_sdk_upgrade.html)
 
 ### Dockerfile
 
-I have chosen to use the Red Hat UBI Image as the base image, which is also what the [official Trino official Image uses](https://github.com/trinodb/trino/blob/master/core/docker/Dockerfile#L30):
+I have chosen to use the Red Hat UBI Image as the base image, which is also what the [official Trino image uses](https://github.com/trinodb/trino/blob/master/core/docker/Dockerfile#L30):
 
 ```dockerfile
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
@@ -568,17 +569,40 @@ terraform {
 ```
 We are still defining the AWS provider, because we will use these to get information about the EKS cluster and RDS instance we setup previously.
 
-We don't we have any variables for this part, as all the input information will come from data resources from AWS provider, and locals. Thus in the `main.tf` file, we first define the locals, with almost the same info as before:
-
+Then we set up the input variables in `variables.tf` (with descriptions):
 ```terraform
-locals {
-  tags = {
-    role = var.name
-  }
+variable "name" {
+  type        = string
+  description = "Common name of the S3 bucket, EKS cluster, RDS instance and other resources"
+}
+
+variable "region" {
+  type        = string
+  description = "AWS region to use"
+}
+
+variable "kube_namespace_name" {
+  type        = string
+  description = "Kubernetes Namespace name where the Trino and Metastore deployments will be done to"
+
+}
+
+variable "kube_sa_name" {
+  type        = string
+  description = "Kubernetes Service account name, which will be used to access S3 using IAM/IRSA"
 }
 ```
+With example `terraform.tfvars` (as before, careful not to commit this):
+```terraform
+name                = "trino-on-eks"
+region              = "ap-southeast-1"
+kube_namespace_name = "trino"
+kube_sa_name        = "s3-access"
+```
+The values should match what was set as variable values in the AWS resources Terraform.
 
-Then, with the AWS provider, we get the following info:
+
+Then, in the `main.tf`,  with the AWS provider, we get the following info:
 1. EKS cluster general and auth info:
 ```terraform
 data "aws_eks_cluster" "trino_on_eks" {
@@ -707,7 +731,7 @@ resource "helm_release" "metastore" {
   }
 }
 ```
-The first value set is the Metastore image, the creation of which we went though previously. 
+The first value set is the Metastore image, the creation of which we went through previously. 
 > NOTE: I have built and pushed this image to [Github registry](https://github.com/binayakd/trino-on-eks/pkgs/container/metastore). However, since it has full Hadoop binaries in it, the image size is pretty huge, and pulling it using public access from Github will take very long. It would be better to build it yourself, and push it into your own container registries.
 
 The next few values are set for access to the RDS instance (connection endpoint, DB name, username and password). These are all gotten from the AWS data resources defined in the setup section.
@@ -754,7 +778,78 @@ Again here we are additionally setting the service account to allow Trino access
 
 With all that deployed we should have all the resources deployed for a working setup.
 
-### Testing the Setup
+## Testing the Setup
+### Kubectl Context Setup and Connection Test
+First step is to check if all the Kube resources have are deployed properly and running. To do this, first we ensure out kubecontex is setup, by setting up the `KUBECONFIG` env variable to point to the location where we have set terraform to save it. so for example, I have set it to save to a folder called `local` in the root of my repo (which I have added to my gitignore). So we can setup the context in the terminal like this:
 
-First step is to check if all the Kube resources have are deployed properly and running
+```bash
+cd ./local
+export KUBECONFIG=./kubeconfig.yaml
+```
 
+Then we can check if the pods are running using `kubectl get pods` command:
+
+```bash
+$ kubectl get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+metastore-796bb9dc7d-bl45s          1/1     Running   0          5m30s
+trino-coordinator-58ddd58b6-t2v7g   1/1     Running   0          5m30s
+trino-worker-69ff875bbb-qs4mc       1/1     Running   0          5m30s
+```
+
+You should see one metastore pod, one Trino coordinator pod, and a number of Trino worker pods (in our case 1)
+
+Since we have not setup any ingress or loadbalancer resource to access Trino (which I will leave as an exercise for another time), we can access it using the `kubectl port-forward` [command](https://kubernetes.io/docs/reference/kubectl/generated/kubectl_port-forward/):
+
+```bash
+kubectl port-forward service/trino 8080
+```
+
+This will allow us to access the Trino endpoint on our local machine on port `8080`.
+
+So, using your faviroute DB client (I am using Dbeaver), we can connect to Trino:
+![Dbeaver Trino Connection Setup](/images/dbeaver-trino-connection.png)
+
+Once its successfully connected, we can see the `s3_hive` catalog (together with some default ones), which we configured in the Trino Helm values to connect to the Metastore:
+![Trino Schema list](/images/trino-schema-list.png)
+
+### Loading Sample Data
+So now that we have out Trino connection setup, we need some data to run queries on. We could either use Trino to write some data into out datastore, or we can register some existing files in S3 as an external table.
+
+Lets do the latter, using the well-known [Iris Dataset](https://www.kaggle.com/datasets/gpreda/iris-dataset?resource=download&select=iris.parquet). I will use the parquet version, but CSV also works.
+
+So we load it into our S3 bucket:
+```bash
+$ aws s3 cp ./iris.parquet s3://trino-on-eks/iris.parquet/iris.parquet
+upload: ./iris.parquet to s3://trino-on-eks/iris.parquet/iris.parquet
+```
+> NOTE: the file has to be in a "subfolder" level in S3, as Trino will only be able to create the table at the folder level. In this case the table will be created in teh path `s3://trino-on-eks/iris.parquet`
+
+Now that we have some data in out S3 bucket, we first create a schema, with a location popery of the S3 bucket:
+```sql
+CREATE SCHEMA s3_hive.test
+WITH (location = 's3a://trino-on-eks/')
+```
+> NOTE: The S3 URL starts with `s3a` (not `s3`) which is used by a spacial S3 client which is actually part of the [hadoop-aws module](https://hadoop.apache.org/docs/stable/hadoop-aws/tools/hadoop-aws/index.html).
+
+Then we create the actual table that registers the parquet file location:
+```sql
+CREATE TABLE s3_hive.test.iris (
+  id DOUBLE,
+  sepal_length DOUBLE,
+  sepal_width DOUBLE,
+  petal_length DOUBLE,
+  petal_width DOUBLE
+)
+WITH (
+  format = 'PARQUET',
+  external_location = 's3a://trino-on-eks/iris.parquet'
+)
+```
+Finally, when we do a select query on this table:
+```sql
+select * from s3_hive.test.iris;
+```
+
+We can see the results:
+![Query Results](/images/query-results.png)
