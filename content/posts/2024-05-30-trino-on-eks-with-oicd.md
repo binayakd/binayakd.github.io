@@ -11,7 +11,7 @@ What is less well documented is how to deploy these services in a Kubernetes clu
 
 This post will guide you through the setup process using mostly Terraform (or OpenTofu if you prefer) and Helm. I have drawn heavy inspiration inspiration from [here](https://shipit.dev/posts/setting-up-eks-with-irsa-using-terraform.html).
 
-This walkthrough assume intermediate to advanced familiarly with Terraform (OpenTofu), Kubernetes and Helm. Some familiarly of the Trino setup will also be helpful.
+This walkthrough assumes intermediate to advanced familiarly with Terraform (OpenTofu), Kubernetes, EKS (and AWS resources in general) and Helm. Some familiarly with Trino and Hive Metastore is also helpful.
 
 The full code can found in [Github](https://github.com/binayakd/trino-on-eks/tree/main).
 
