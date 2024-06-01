@@ -399,7 +399,7 @@ module "trino_s3_access_irsa" {
   oidc_fully_qualified_subjects = ["system:serviceaccount:${var.kube_namespace_name}:${var.kube_sa_name}"]
 }
 ```
-This assigns the service account specified in `locals.kube_sa_name` in the namespace specified in `local.kube_namespace` the permissions to assume this created role (through the cluster's OIDC provider), which in turn has been assigned the S3 bucket access polices created before.
+This assigns the service account specified in `var.kube_sa_name` in the namespace specified in `var.kube_namespace_name` the permissions to assume this created role (through the cluster's OIDC provider), which in turn has been assigned the S3 bucket access polices created before.
 
 And finally we need to save the kubeconfig file for access to the cluster. For this first we setup the kubeconfig yaml template:
 ```yaml
