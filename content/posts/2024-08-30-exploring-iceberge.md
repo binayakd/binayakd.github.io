@@ -575,3 +575,240 @@ pd.read_sql_query('select * from "iceberg-hive".hive."yellow_tripdata$partitions
 | 4 | (tpep_pickup_datetime_month: 395) | 2            | 1          | 6043       | (VendorID: (min: 2, max: 2, null_count: 0, nan... |
 | 5 | (tpep_pickup_datetime_month: 649) | 3007514      | 2          | 46708043   | (VendorID: (min: 1, max: 2, null_count: 0, nan... |
 | 6 | (tpep_pickup_datetime_month: 650) | 2            | 1          | 5908       | (VendorID: (min: 2, max: 2, null_count: 0, nan... |
+
+
+## JDBC/SQL Catalog
+Now we are setting up and testing the JDBC/SQL Catalog. Here we only need the postgres instance that we have already setup, and have used with our Hive Metastore. Just that we are connecting to a separate `iceberg` database in that instance.
+
+This part is based on the Jupyter notebook: [`02-iceberg-jdbc.ipynb`](https://github.com/binayakd/exploring-apache-iceberg/blob/main/workspace/02-iceberg-jdbc.ipynb)
+
+### Importing Required Libraries
+As before we will be importing `SparkSession` for, well, the Spark session, and the Postgress driver `psycopg`, Trino connection libraries, and pandas, to explore the data that we will be writing with Spark.
+
+
+```python
+from pyspark.sql import SparkSession
+import pyspark.sql.functions as F
+import psycopg
+from trino.dbapi import connect
+import pandas as pd
+
+# this is to better display pyspark and pandas dataframes
+from IPython.core.display import HTML
+display(HTML("<style>pre { white-space: pre !important; }</style>"))
+
+pd.set_option('display.max_colwidth', None)
+```
+
+### Setting up Spark Session
+
+We now setup the Spark session with the configs required to connect to the postgres database, to act as the catalog. This involves adding the postgres JDBC driver that we installed in the docker image in the location `/opt/extra-jars/postgresql.jar` to be added to the `spark.jars` config, in addition to the already added Iceberg related jars. We also have all the needed JDBC connection configs ([details here](https://iceberg.apache.org/docs/1.5.0/jdbc/)) under the catalog `iceberg`. This name will become important as we will see later.
+
+Again, to connect to our local instance of Minio, we need to set `s3.endpoint` and `s3.path-style-access` configs, and set our warehouse location to be in the folder `iceberg` under the bucket `warehouse` that was created on startup.
+
+
+```python
+iceberg_catalog_name = "iceberg"
+spark = SparkSession.builder \
+  .appName("iceberg-jdbc") \
+  .config("spark.driver.memory", "4g") \
+  .config("spark.executor.memory", "4g") \
+  .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
+  .config("spark.jars", "/opt/extra-jars/iceberg-spark-runtime.jar,/opt/extra-jars/iceberg-aws-bundle.jar,/opt/extra-jars/postgresql.jar") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}", "org.apache.iceberg.spark.SparkCatalog") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.type", "jdbc") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.uri", "jdbc:postgresql://postgres:5432/iceberg") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.jdbc.user", "postgres") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.jdbc.password", "postgres") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.warehouse", "s3://warehouse/iceberg/") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.s3.endpoint", "http://minio:9000") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.s3.path-style-access", "true") \
+  .getOrCreate()
+```
+
+### Loading Test Data
+Now we load the 2 parquet files downloaded previously, into the Spark memory.
+
+```python
+df_2024_01 = spark.read.parquet("file:///home/iceberg/workspace/downloaded-data/yellow_tripdata_2024-01.parquet")
+df_2024_02 = spark.read.parquet("file:///home/iceberg/workspace/downloaded-data/yellow_tripdata_2024-02.parquet")
+```
+
+### Creating namespace under the catalog
+Now we created the namespace`jdbc`. We won't set any location, as we have already set a default warehouse location for this catalog when creating the Spark session. So it should create a folder under that.
+
+```python
+spark.sql("CREATE NAMESPACE IF NOT EXISTS iceberg.jdbc")
+```
+
+### Writing the data to Iceberg Table
+Again as before, we crate the table first, based on 2024-01 data, partitioned by the month, deriving it from the `tpep_pickup_datetime` column.
+
+```python
+df_2024_01.writeTo("iceberg.jdbc.yellow_tripdata").partitionedBy(
+    F.months("tpep_pickup_datetime")
+).create()
+```
+
+Checking the data saved to Minio, where we expect it to be, under `iceberg/jdbc`.
+
+```python
+!mc ls --recursive minio/warehouse/iceberg/jdbc
+```
+
+    [2024-09-11 16:10:05 UTC] 5.9KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2002-12/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00003.parquet
+    [2024-09-11 16:10:05 UTC] 5.9KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2009-01/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00004.parquet
+    [2024-09-11 16:10:05 UTC] 6.3KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2023-12/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00001.parquet
+    [2024-09-11 16:10:05 UTC]  44MiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2024-01/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00002.parquet
+    [2024-09-11 16:10:05 UTC] 5.9KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2024-02/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00005.parquet
+    [2024-09-11 16:10:06 UTC] 3.8KiB STANDARD yellow_tripdata/metadata/00000-fdb3dbc7-7f1c-419f-8062-f592a05e7e98.metadata.json
+    [2024-09-11 16:10:06 UTC] 9.0KiB STANDARD yellow_tripdata/metadata/fe6f97c1-805d-46b3-b83a-80a882c19029-m0.avro
+    [2024-09-11 16:10:06 UTC] 4.1KiB STANDARD yellow_tripdata/metadata/snap-4307659518017302486-1-fe6f97c1-805d-46b3-b83a-80a882c19029.avro
+
+And, as expected, we do see the same data in partitions, and the metadata file. 
+
+Now we also check what metadata has been written database. Using the `psycopg` and `pandas` library, can get the data from specific tables in the Postgres database.
+
+```python
+conn = psycopg.connect("postgresql://postgres:postgres@postgres:5432/iceberg")
+```
+
+There are actually only 2 tables that were created and written to: `iceberg_namespace_properties` and `iceberg_tables`. First we check the `iceberg_namespace_properties` table.
+
+```python
+pd.read_sql_query('select * from iceberg_namespace_properties', conn)
+```
+|   | catalog_name | namespace | property_key | property_value |
+|---|--------------|-----------|--------------|----------------|
+| 0 | iceberg      | jdbc      | owner        | iceberg        |
+| 1 | iceberg      | jdbc      | exists       | true           |
+
+We see 2 properties for the `iceberg` catalog and `jdbc` namespace. The name `iceberg` is gotten from the catalog name we set when creating the Spark session. 
+
+Now we check the table `iceberg_tables`
+
+```python
+pd.read_sql_query('select * from iceberg_tables', conn)
+```
+|   | catalog_name | table_namespace | table_name      | metadata_location                                 | previous_metadata_location | iceberg_type |
+|---|--------------|-----------------|-----------------|---------------------------------------------------|----------------------------|--------------|
+| 0 | iceberg      | jdbc            | yellow_tripdata | s3://warehouse/iceberg/jdbc/yellow_tripdata/me... | None                       | TABLE        |
+
+
+Here we see a single entry, giving information about the metadata file location in Minio, for the table we just created. Compared to the information in the Hive catalog, this is a lot more bare bone, acting more like a pointer to the actual location of the metadata.
+
+### Adding New partition to the table
+Now, as before, we will add the file for the month of 2024-02 as a new partition to the table.
+
+```python
+df_2024_02.writeTo("iceberg.jdbc.yellow_tripdata").append()
+```
+
+Checking on the data in Minio, we see the new partitions, and metadata files.
+
+```python
+!mc ls --recursive minio/warehouse/iceberg/jdbc
+```
+
+    [2024-09-11 16:10:05 UTC] 5.9KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2002-12/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00003.parquet
+    [2024-09-13 16:02:22 UTC] 5.3KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2008-12/00000-10-193c7271-9ebc-4616-a74d-dd220caf32a5-0-00003.parquet
+    [2024-09-13 16:02:22 UTC] 5.3KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2009-01/00000-10-193c7271-9ebc-4616-a74d-dd220caf32a5-0-00004.parquet
+    [2024-09-11 16:10:05 UTC] 5.9KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2009-01/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00004.parquet
+    [2024-09-11 16:10:05 UTC] 6.3KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2023-12/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00001.parquet
+    [2024-09-13 16:02:21 UTC] 6.3KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2024-01/00000-10-193c7271-9ebc-4616-a74d-dd220caf32a5-0-00001.parquet
+    [2024-09-11 16:10:05 UTC]  44MiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2024-01/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00002.parquet
+    [2024-09-13 16:02:22 UTC]  44MiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2024-02/00000-10-193c7271-9ebc-4616-a74d-dd220caf32a5-0-00002.parquet
+    [2024-09-11 16:10:05 UTC] 5.9KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2024-02/00000-10-c34f04bf-cde6-4327-a36b-fc50f8b957b9-0-00005.parquet
+    [2024-09-13 16:02:22 UTC] 5.8KiB STANDARD yellow_tripdata/data/tpep_pickup_datetime_month=2024-03/00000-10-193c7271-9ebc-4616-a74d-dd220caf32a5-0-00005.parquet
+    [2024-09-11 16:10:06 UTC] 3.8KiB STANDARD yellow_tripdata/metadata/00000-fdb3dbc7-7f1c-419f-8062-f592a05e7e98.metadata.json
+    [2024-09-13 16:02:23 UTC] 4.9KiB STANDARD yellow_tripdata/metadata/00001-983875cf-5160-4cfe-a73e-f8d34495bb74.metadata.json
+    [2024-09-13 16:02:23 UTC] 8.9KiB STANDARD yellow_tripdata/metadata/23ab986b-8d26-4cf7-8908-266922ec7e65-m0.avro
+    [2024-09-11 16:10:06 UTC] 9.0KiB STANDARD yellow_tripdata/metadata/fe6f97c1-805d-46b3-b83a-80a882c19029-m0.avro
+    [2024-09-13 16:02:23 UTC] 4.2KiB STANDARD yellow_tripdata/metadata/snap-2752971245912516800-1-23ab986b-8d26-4cf7-8908-266922ec7e65.avro
+    [2024-09-11 16:10:06 UTC] 4.1KiB STANDARD yellow_tripdata/metadata/snap-4307659518017302486-1-fe6f97c1-805d-46b3-b83a-80a882c19029.avro
+
+As before, we see the expected partition created, and some extra partitions with stray data. We also see an new setup of metadata files being created.
+
+Checking the `iceberg_table` table in postgres, we see the `metadata_location` is updated to point to the new json file, and the  `previous_metadata_location` has been set.
+
+```python
+pd.read_sql_query('select * from iceberg_tables', conn)
+```
+
+|   | catalog_name | table_namespace | table_name      | metadata_location                                                                                             | previous_metadata_location                                                                                    | iceberg_type |
+|---|--------------|-----------------|-----------------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|--------------|
+| 0 | iceberg      | jdbc            | yellow_tripdata | s3://warehouse/iceberg/jdbc/yellow_tripdata/metadata/00001-983875cf-5160-4cfe-a73e-f8d34495bb74.metadata.json | s3://warehouse/iceberg/jdbc/yellow_tripdata/metadata/00000-fdb3dbc7-7f1c-419f-8062-f592a05e7e98.metadata.json | TABLE        |
+
+### Querying with Trino
+The configurations required to enable Trino queryring would be the [JDBC Catalog configs](https://trino.io/docs/current/object-storage/metastores.html#iceberg-jdbc-catalog), which have been setup in our Trino deployment:
+
+```
+connector.name=iceberg
+iceberg.catalog.type=jdbc
+iceberg.jdbc-catalog.catalog-name=iceberg
+iceberg.jdbc-catalog.driver-class=org.postgresql.Driver
+iceberg.jdbc-catalog.connection-url=jdbc:postgresql://postgres:5432/iceberg
+iceberg.jdbc-catalog.connection-user=postgres
+iceberg.jdbc-catalog.connection-password=postgres
+iceberg.jdbc-catalog.default-warehouse-dir=s3://warehouse/iceberg-jdbc/
+fs.native-s3.enabled=true
+s3.endpoint=http://minio:9000
+s3.path-style-access=true
+s3.aws-access-key=${ENV:AWS_ACCESS_KEY_ID}
+s3.aws-secret-key=${ENV:AWS_SECRET_ACCESS_KEY}
+s3.region=${ENV:AWS_REGION}
+```
+
+As before, we setup the Trino python client and run the queries, and load them into a pandas dataframe.
+
+```python
+trino_conn = connect(
+    host="trino",
+    port=8080,
+    user="user"
+)
+```
+
+```python
+pd.read_sql_query('select * from "iceberg-jdbc".jdbc.yellow_tripdata limit 10', trino_conn)
+```
+|   | vendorid | tpep_pickup_datetime | tpep_dropoff_datetime | passenger_count | trip_distance | ratecodeid | store_and_fwd_flag | pulocationid | dolocationid | payment_type | fare_amount | extra | mta_tax | tip_amount | tolls_amount | improvement_surcharge | total_amount | congestion_surcharge | airport_fee |
+|---|----------|----------------------|-----------------------|-----------------|---------------|------------|--------------------|--------------|--------------|--------------|-------------|-------|---------|------------|--------------|-----------------------|--------------|----------------------|-------------|
+| 0 | 2        | 2024-01-01 00:57:55  | 2024-01-01 01:17:43   | 1               | 1.72          | 1          | N                  | 186          | 79           | 2            | 17.7        | 1.0   | 0.5     | 0.00       | 0.0          | 1.0                   | 22.70        | 2.5                  | 0.00        |
+| 1 | 1        | 2024-01-01 00:03:00  | 2024-01-01 00:09:36   | 1               | 1.80          | 1          | N                  | 140          | 236          | 1            | 10.0        | 3.5   | 0.5     | 3.75       | 0.0          | 1.0                   | 18.75        | 2.5                  | 0.00        |
+| 2 | 1        | 2024-01-01 00:17:06  | 2024-01-01 00:35:01   | 1               | 4.70          | 1          | N                  | 236          | 79           | 1            | 23.3        | 3.5   | 0.5     | 3.00       | 0.0          | 1.0                   | 31.30        | 2.5                  | 0.00        |
+| 3 | 1        | 2024-01-01 00:36:38  | 2024-01-01 00:44:56   | 1               | 1.40          | 1          | N                  | 79           | 211          | 1            | 10.0        | 3.5   | 0.5     | 2.00       | 0.0          | 1.0                   | 17.00        | 2.5                  | 0.00        |
+| 4 | 1        | 2024-01-01 00:46:51  | 2024-01-01 00:52:57   | 1               | 0.80          | 1          | N                  | 211          | 148          | 1            | 7.9         | 3.5   | 0.5     | 3.20       | 0.0          | 1.0                   | 16.10        | 2.5                  | 0.00        |
+| 5 | 1        | 2024-01-01 00:54:08  | 2024-01-01 01:26:31   | 1               | 4.70          | 1          | N                  | 148          | 141          | 1            | 29.6        | 3.5   | 0.5     | 6.90       | 0.0          | 1.0                   | 41.50        | 2.5                  | 0.00        |
+| 6 | 2        | 2024-01-01 00:49:44  | 2024-01-01 01:15:47   | 2               | 10.82         | 1          | N                  | 138          | 181          | 1            | 45.7        | 6.0   | 0.5     | 10.00      | 0.0          | 1.0                   | 64.95        | 0.0                  | 1.75        |
+| 7 | 1        | 2024-01-01 00:30:40  | 2024-01-01 00:58:40   | 0               | 3.00          | 1          | N                  | 246          | 231          | 2            | 25.4        | 3.5   | 0.5     | 0.00       | 0.0          | 1.0                   | 30.40        | 2.5                  | 0.00        |
+| 8 | 2        | 2024-01-01 00:26:01  | 2024-01-01 00:54:12   | 1               | 5.44          | 1          | N                  | 161          | 261          | 2            | 31.0        | 1.0   | 0.5     | 0.00       | 0.0          | 1.0                   | 36.00        | 2.5                  | 0.00        |
+| 9 | 2        | 2024-01-01 00:28:08  | 2024-01-01 00:29:16   | 1               | 0.04          | 1          | N                  | 113          | 113          | 2            | 3.0         | 1.0   | 0.5     | 0.00       | 0.0          | 1.0                   | 8.00         | 2.5                  | 0.00        |
+
+And as with the Hive Catalog, we can also query the Iceberg metadata (snapshots and partitions)
+
+```python
+pd.set_option('display.max_colwidth', 100)
+pd.read_sql_query('select * from "iceberg-jdbc".jdbc."yellow_tripdata$snapshots"', trino_conn)
+```
+
+|   | committed_at                     | snapshot_id         | parent_id    | operation | manifest_list                                                                                       | summary                                                                                             |
+|---|----------------------------------|---------------------|--------------|-----------|-----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| 0 | 2024-09-11 16:10:06.293000+00:00 | 4307659518017302486 | NaN          | append    | s3://warehouse/iceberg/jdbc/yellow_tripdata/metadata/snap-4307659518017302486-1-fe6f97c1-805d-46... | {'spark.app.id': 'local-1726070250816', 'changed-partition-count': '5', 'added-data-files': '5',... |
+| 1 | 2024-09-13 16:02:23.872000+00:00 | 2752971245912516800 | 4.307660e+18 | append    | s3://warehouse/iceberg/jdbc/yellow_tripdata/metadata/snap-2752971245912516800-1-23ab986b-8d26-4c... | {'spark.app.id': 'local-1726241458394', 'changed-partition-count': '5', 'added-data-files': '5',... |
+
+
+```python
+pd.read_sql_query('select * from "iceberg-jdbc".jdbc."yellow_tripdata$partitions"', trino_conn)
+```
+
+|   | partition                         | record_count | file_count | total_size | data                                                                                                |
+|---|-----------------------------------|--------------|------------|------------|-----------------------------------------------------------------------------------------------------|
+| 0 | (tpep_pickup_datetime_month: 467) | 1            | 1          | 5433       | (VendorID: (min: 2, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
+| 1 | (tpep_pickup_datetime_month: 468) | 4            | 2          | 11514      | (VendorID: (min: 2, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
+| 2 | (tpep_pickup_datetime_month: 647) | 10           | 1          | 6418       | (VendorID: (min: 2, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
+| 3 | (tpep_pickup_datetime_month: 648) | 2964617      | 2          | 46495595   | (VendorID: (min: 1, max: 6, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
+| 4 | (tpep_pickup_datetime_month: 395) | 2            | 1          | 6043       | (VendorID: (min: 2, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
+| 5 | (tpep_pickup_datetime_month: 649) | 3007514      | 2          | 46708043   | (VendorID: (min: 1, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
+| 6 | (tpep_pickup_datetime_month: 650) | 2            | 1          | 5908       | (VendorID: (min: 2, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
