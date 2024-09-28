@@ -1,6 +1,6 @@
 ---
 title: Exploring Apache Iceberg
-date: 2024-08-30
+date: 2024-09-28
 ---
 
 ## Introduction
@@ -812,3 +812,140 @@ pd.read_sql_query('select * from "iceberg-jdbc".jdbc."yellow_tripdata$partitions
 | 4 | (tpep_pickup_datetime_month: 395) | 2            | 1          | 6043       | (VendorID: (min: 2, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
 | 5 | (tpep_pickup_datetime_month: 649) | 3007514      | 2          | 46708043   | (VendorID: (min: 1, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
 | 6 | (tpep_pickup_datetime_month: 650) | 2            | 1          | 5908       | (VendorID: (min: 2, max: 2, null_count: 0, nan_count: None), tpep_pickup_datetime: (min: datetim... |
+c
+## REST Catalog
+Now lets have a look at the REST catalog. Here we will use the [Python REST Catalog by Kevin Liu](https://github.com/kevinjqliu/iceberg-rest-catalog), which uses [Pyiceberg](https://py.iceberg.apache.org/) internally to proxy a SQL catalog. 
+
+So for this, we will be doing the tests slightly differently. We will set up this catalog to proxy the JDBC Catalog created previously, and query the data that was wrote into it. 
+
+This part is based on the Jupyter notebook: [`03-iceberg-rest.ipynb`](https://github.com/binayakd/exploring-apache-iceberg/blob/main/workspace/03-iceberg-rest.ipynb)
+
+### Catalog Configuration
+As this REST catalog is a proxy for a JDBC/SQL catalog, we need to ensure the configurations are setup to let it connect to the JDBC catalog we created, and this is done through environment variables on the container, as setup in the [Docker Compose file](https://github.com/binayakd/exploring-apache-iceberg/blob/f935c90751806ec8771fc398694e162ecb1670a8/docker-compose.yaml#L135):
+
+```
+    environment:
+      CATALOG_NAME: iceberg
+      CATALOG_JDBC_URI: postgresql://postgres:postgres@postgres:5432/iceberg
+      CATALOG_WAREHOUSE: s3://warehouse/iceberg-jdbc/
+      CATALOG_S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: admin
+      AWS_SECRET_ACCESS_KEY: password
+      AWS_REGION: us-east-1
+```
+Of particular importance is `CATALOG_NAME`, which has to match the name we set when creating the JDBC catalog using spark.
+
+### Setting up Spark Session
+Details docs of the spark configs to use with the Rest catalog can be found [here](https://iceberg.apache.org/docs/latest/spark-configuration/).
+We will setting up `iceberg` as the catalog name, but as this is only as a reference on the spark side. Since the Rest Catalog container has already been setup with its own env variables to connection to the JDBC catalog, thats what it will use.
+
+Here we only need to configure the Rest catalog url, and the Minio specific configs, since connection to postgres is handled by the REST Catalog.
+
+```python
+iceberg_catalog_name = "iceberg"
+spark = SparkSession.builder \
+  .appName("iceberg-rest") \
+  .config("spark.driver.memory", "4g") \
+  .config("spark.executor.memory", "4g") \
+  .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
+  .config("spark.jars", "/opt/extra-jars/iceberg-spark-runtime.jar,/opt/extra-jars/iceberg-aws-bundle.jar") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}", "org.apache.iceberg.spark.SparkCatalog") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.type", "rest") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.uri", "http://iceberg-rest-catalog:8000") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.io-impl", "org.apache.iceberg.aws.s3.S3FileIO") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.warehouse", "s3://warehouse/iceberg-jdbc/") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.s3.endpoint", "http://minio:9000") \
+  .config(f"spark.sql.catalog.{iceberg_catalog_name}.s3.path-style-access", "true") \
+  .getOrCreate()
+```
+
+### Reading Data Using Spark
+
+So far we have only seen how to write data With spark. We can use this opportunity to test, reading data from Iceberg with Spark. We can do that using the `spark.table()` [method](https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.SparkSession.table.html):
+
+
+```python
+df = spark.table("iceberg.jdbc.yellow_tripdata")
+df.show()
+```
+
+    +--------+--------------------+---------------------+---------------+-------------+----------+------------------+------------+------------+------------+-----------+-----+-------+----------+------------+---------------------+------------+--------------------+-----------+
+    |VendorID|tpep_pickup_datetime|tpep_dropoff_datetime|passenger_count|trip_distance|RatecodeID|store_and_fwd_flag|PULocationID|DOLocationID|payment_type|fare_amount|extra|mta_tax|tip_amount|tolls_amount|improvement_surcharge|total_amount|congestion_surcharge|Airport_fee|
+    +--------+--------------------+---------------------+---------------+-------------+----------+------------------+------------+------------+------------+-----------+-----+-------+----------+------------+---------------------+------------+--------------------+-----------+
+    |       2| 2024-01-31 23:59:53|  2024-02-01 00:18:35|              1|         6.95|         1|                 N|         249|         166|           1|       30.3|  1.0|    0.5|      7.06|         0.0|                  1.0|       42.36|                 2.5|        0.0|
+    |       2| 2024-01-31 23:59:24|  2024-02-01 00:06:13|              1|         1.28|         1|                 N|          68|         137|           2|        9.3|  1.0|    0.5|       0.0|         0.0|                  1.0|        14.3|                 2.5|        0.0|
+    |       2| 2024-01-31 23:57:33|  2024-02-01 00:05:48|              1|          1.4|         1|                 N|          90|          79|           1|       10.0|  1.0|    0.5|      1.95|         0.0|                  1.0|       16.95|                 2.5|        0.0|
+    |       2| 2024-01-31 23:58:59|  2024-02-01 00:06:21|              1|         2.18|         1|                 N|         162|          90|           1|       11.4|  1.0|    0.5|      3.28|         0.0|                  1.0|       19.68|                 2.5|        0.0|
+    |       2| 2024-01-31 23:58:18|  2024-02-01 00:03:07|              1|         1.01|         1|                 N|          48|         142|           1|        7.2|  1.0|    0.5|      2.44|         0.0|                  1.0|       14.64|                 2.5|        0.0|
+    |       2| 2024-01-31 23:59:54|  2024-02-01 00:00:06|              1|          0.0|         1|                 N|          70|          70|           2|       -3.0| -1.0|   -0.5|       0.0|         0.0|                 -1.0|        -5.5|                 0.0|        0.0|
+    |       2| 2024-01-31 23:55:45|  2024-02-01 00:24:15|              1|         6.24|         1|                 N|         211|         142|           1|       31.7|  1.0|    0.5|      7.34|         0.0|                  1.0|       44.04|                 2.5|        0.0|
+    |       2| 2024-01-31 23:52:13|  2024-02-01 00:03:09|              1|         1.35|         1|                 N|         142|          48|           1|       11.4|  1.0|    0.5|      3.28|         0.0|                  1.0|       19.68|                 2.5|        0.0|
+    |       2| 2024-01-31 23:59:32|  2024-02-01 00:08:59|              1|         3.03|         1|                 N|         264|         264|           1|       14.9|  1.0|    0.5|       2.0|         0.0|                  1.0|        21.9|                 2.5|        0.0|
+    |       2| 2024-01-31 23:58:03|  2024-02-01 00:04:23|              1|         2.01|         1|                 N|         262|          74|           2|       10.0|  1.0|    0.5|       0.0|         0.0|                  1.0|        15.0|                 2.5|        0.0|
+    |       2| 2024-01-31 23:52:15|  2024-02-01 00:18:43|              1|         9.54|         1|                 N|          68|         243|           1|       40.1|  1.0|    0.5|      9.02|         0.0|                  1.0|       54.12|                 2.5|        0.0|
+    |       2| 2024-02-01 00:00:39|  2024-02-01 00:12:08|              5|         2.22|         1|                 N|         186|          79|           1|       13.5|  1.0|    0.5|       3.7|         0.0|                  1.0|        22.2|                 2.5|        0.0|
+    |       2| 2024-02-01 00:00:17|  2024-02-01 00:20:13|              1|         8.93|         1|                 N|         138|         152|           2|       36.6|  6.0|    0.5|       0.0|        6.94|                  1.0|       52.79|                 0.0|       1.75|
+    |       2| 2024-02-01 00:01:15|  2024-02-01 00:06:30|              1|          1.1|         1|                 N|         161|         234|           1|        7.9|  1.0|    0.5|      2.58|         0.0|                  1.0|       15.48|                 2.5|        0.0|
+    |       2| 2024-03-01 00:01:23|  2024-03-01 00:10:27|              1|         1.64|         1|                 N|         114|         261|           1|       11.4|  1.0|    0.5|      3.28|         0.0|                  1.0|       19.68|                 2.5|        0.0|
+    |       2| 2024-03-01 00:01:37|  2024-03-01 00:23:02|              1|         9.46|         1|                 N|         107|         179|           1|       40.1|  1.0|    0.5|     15.61|        6.94|                  1.0|       67.65|                 2.5|        0.0|
+    |       2| 2023-12-31 23:56:46|  2024-01-01 00:12:06|              2|         2.38|         1|                 N|         236|         142|           1|       15.6|  1.0|    0.5|       1.0|         0.0|                  1.0|        21.6|                 2.5|        0.0|
+    |       2| 2023-12-31 23:39:17|  2023-12-31 23:42:00|              2|         0.47|         1|                 N|          90|          68|           1|        5.1|  1.0|    0.5|       0.0|         0.0|                  1.0|        10.1|                 2.5|        0.0|
+    |       2| 2023-12-31 23:41:02|  2023-12-31 23:48:03|              1|          0.4|         1|                 N|         246|         246|           2|        7.2|  1.0|    0.5|       0.0|         0.0|                  1.0|        12.2|                 2.5|        0.0|
+    |       2| 2023-12-31 23:57:17|  2024-01-01 00:01:50|              1|         0.53|         1|                 N|         144|         211|           1|        5.8|  1.0|    0.5|      2.16|         0.0|                  1.0|       12.96|                 2.5|        0.0|
+    +--------+--------------------+---------------------+---------------+-------------+----------+------------------+------------+------------+------------+-----------+-----+-------+----------+------------+---------------------+------------+--------------------+-----------+
+    only showing top 20 rows
+    
+
+### Querying with Trino
+The configurations required to enable Trino querying would be the [REST Catalog configs](https://trino.io/docs/current/object-storage/metastores.html#rest-catalog), which have been setup in our Trino deployment:
+
+```
+# iceberg-rest.properties
+connector.name=iceberg
+iceberg.catalog.type=rest
+iceberg.rest-catalog.uri=http://iceberg-rest-catalog:8000
+iceberg.rest-catalog.warehouse=s3://warehouse/iceberg-jdbc/
+fs.native-s3.enabled=true
+s3.endpoint=http://minio:9000
+s3.path-style-access=true
+s3.aws-access-key=${ENV:AWS_ACCESS_KEY_ID}
+s3.aws-secret-key=${ENV:AWS_SECRET_ACCESS_KEY}
+s3.region=${ENV:AWS_REGION}
+```
+
+As before, we setup the Trino python client and run the queries, and load them into a pandas dataframe.
+
+```python
+conn = connect(
+    host="trino",
+    port=8080,
+    user="user"
+)
+```
+
+```python
+df_from_trino = pd.read_sql_query('select * from "iceberg-jdbc".jdbc.yellow_tripdata limit 10', conn)
+df_from_trino
+```
+|   | vendorid | tpep_pickup_datetime | tpep_dropoff_datetime | passenger_count | trip_distance | ratecodeid | store_and_fwd_flag | pulocationid | dolocationid | payment_type | fare_amount | extra | mta_tax | tip_amount | tolls_amount | improvement_surcharge | total_amount | congestion_surcharge | airport_fee |
+|---|----------|----------------------|-----------------------|-----------------|---------------|------------|--------------------|--------------|--------------|--------------|-------------|-------|---------|------------|--------------|-----------------------|--------------|----------------------|-------------|
+| 0 | 2        | 2024-01-01 00:57:55  | 2024-01-01 01:17:43   | 1               | 1.72          | 1          | N                  | 186          | 79           | 2            | 17.7        | 1.0   | 0.5     | 0.00       | 0.0          | 1.0                   | 22.70        | 2.5                  | 0.00        |
+| 1 | 1        | 2024-01-01 00:03:00  | 2024-01-01 00:09:36   | 1               | 1.80          | 1          | N                  | 140          | 236          | 1            | 10.0        | 3.5   | 0.5     | 3.75       | 0.0          | 1.0                   | 18.75        | 2.5                  | 0.00        |
+| 2 | 1        | 2024-01-01 00:17:06  | 2024-01-01 00:35:01   | 1               | 4.70          | 1          | N                  | 236          | 79           | 1            | 23.3        | 3.5   | 0.5     | 3.00       | 0.0          | 1.0                   | 31.30        | 2.5                  | 0.00        |
+| 3 | 1        | 2024-01-01 00:36:38  | 2024-01-01 00:44:56   | 1               | 1.40          | 1          | N                  | 79           | 211          | 1            | 10.0        | 3.5   | 0.5     | 2.00       | 0.0          | 1.0                   | 17.00        | 2.5                  | 0.00        |
+| 4 | 1        | 2024-01-01 00:46:51  | 2024-01-01 00:52:57   | 1               | 0.80          | 1          | N                  | 211          | 148          | 1            | 7.9         | 3.5   | 0.5     | 3.20       | 0.0          | 1.0                   | 16.10        | 2.5                  | 0.00        |
+| 5 | 1        | 2024-01-01 00:54:08  | 2024-01-01 01:26:31   | 1               | 4.70          | 1          | N                  | 148          | 141          | 1            | 29.6        | 3.5   | 0.5     | 6.90       | 0.0          | 1.0                   | 41.50        | 2.5                  | 0.00        |
+| 6 | 2        | 2024-01-01 00:49:44  | 2024-01-01 01:15:47   | 2               | 10.82         | 1          | N                  | 138          | 181          | 1            | 45.7        | 6.0   | 0.5     | 10.00      | 0.0          | 1.0                   | 64.95        | 0.0                  | 1.75        |
+| 7 | 1        | 2024-01-01 00:30:40  | 2024-01-01 00:58:40   | 0               | 3.00          | 1          | N                  | 246          | 231          | 2            | 25.4        | 3.5   | 0.5     | 0.00       | 0.0          | 1.0                   | 30.40        | 2.5                  | 0.00        |
+| 8 | 2        | 2024-01-01 00:26:01  | 2024-01-01 00:54:12   | 1               | 5.44          | 1          | N                  | 161          | 261          | 2            | 31.0        | 1.0   | 0.5     | 0.00       | 0.0          | 1.0                   | 36.00        | 2.5                  | 0.00        |
+| 9 | 2        | 2024-01-01 00:28:08  | 2024-01-01 00:29:16   | 1               | 0.04          | 1          | N                  | 113          | 113          | 2            | 3.0         | 1.0   | 0.5     | 0.00       | 0.0          | 1.0                   | 8.00         | 2.5                  | 0.00        |
+
+## Conclusion
+
+Having looked at three of the iceberg catalog, we can get a sense of how each one is setup and works. The Hive catalog is the most heavyweight amongst them, and would only make sense to use if you already have a Hive metastore running, as part of your infrastructure. 
+
+The JDBC driver is the most lightweight, needing only a relational database. But the downside of the JDBC catalog is that it the clients need direct connection to the database instance, with no role based access capabilities. Also this does not support iceberg views. If you need a very simple iceberg setup, with no requirement for views, JDBC/SQL catalog could be a good choice.
+
+Finally, the REST catalog is the latest and the most promising. It being an open specification, bring a standardised interface for client, while allowing flexibility on the catalog implementation. For example, the Python REST client we used, could be easily modified to connect to the Hive Catalog (or any other kind of Catalog) instead of just JDBC/SQL, with authentication and authorization built in. In fact this is what the [Polaris Catalog](https://polaris.io/), [Unity Catalog](https://www.unitycatalog.io/), [Nessie REST catalog](https://projectnessie.org/develop/rest/) and a few others are doing. In general a REST catalog is what should be chosen if you are planing to start a fresh Iceberg setup. But the choice of which REST Catalog implementation, or even whether to create your own, has to be consider. Perhaps this will be a topic of another post. 
+
+
