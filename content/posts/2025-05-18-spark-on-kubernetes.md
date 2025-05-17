@@ -1,20 +1,24 @@
 ---
 title: Spark on Kubernetes, with Spark History Server, Minio Object Storage and Dynamic Resource Allocation
-date: 2025-03-25
+date: 2025-05-18
 ---
 
 ## Introduction
 
 Apache Spark is a popular and powerful open source distributed data processing engine. One of the key strength of Spark is its distributed nature, allowing parallelization of data processing, which can take advantage of horizontally scalable compute infrastructure, like a Kubernetes cluster.
 
-In fact Spark does provide native support for Kubernetes, and thats what I will be covering in this post. Specifically I will be covering the following:
+Google's [Spark Operator](https://github.com/kubeflow/spark-operator) is commonly used in most tutorials available online, as an example of running Spark on Kubernetes. But doing it without the operator helped me understand batter the how it all actually works. This approach also provides greater flexibility and control over the deployment process, making it suitable for custom setups and specific use cases, such as the one I had to work with.
 
-1. Spark on On-prem kubernetes without Spark Operator
-2. On-prem Minio for object storage 
-3. Spark History service, with spark events saved to Minio
-4. Dynamic Resource allocation for spark jobs
+Another element of Spark on Kubernetes that lacks example and tutorials online is Dynamic Resource Allocation. Here I will attempt to provide some example and guidance on this. 
 
-All the code used in this post can be found [here](https://github.com/binayakd/spark-on-kubernetes).
+So I will be integrating the following components to crate a Spark application environment:
+
+1. **Minio**: An on-premises object storage solution compatible with the S3 protocol, used for storing Spark event logs and other data.
+2. **Spark History Server**: A tool for monitoring and analyzing completed Spark jobs, with logs stored in Minio.
+3. **Dynamic Resource Allocation**: A feature that optimizes resource usage by scaling Spark executors based on workload demands.
+
+By the end of this article, you will have a comprehensive understanding of how to set up and run Spark on Kubernetes, build custom container images, configure Kubernetes resources, and test dynamic resource allocation. All the code and configurations used in this post are available in the [GitHub repository](https://github.com/binayakd/spark-on-kubernetes).
+
 
 ## Perquisites  
 
@@ -487,4 +491,115 @@ spec:
 
 ## Spark Application
 
-With all the kubernetes resources deployed, we can actually start deploying a Spark application and testing the the Spark History server and 
+With all the kubernetes resources deployed, we can actually start deploying a Spark application and testing the the Spark History server and dynamic resource applications. 
+
+In the Jupyter lab instance, [this notebook](https://github.com/binayakd/spark-on-kubernetes/blob/main/workspace/dynamic_resource_allocation_test.ipynb) can be used as the full test. First are some import statements:
+
+```python
+from pyspark.sql import SparkSession
+import os
+import sys
+from random import random
+from operator import add
+```
+
+Then we start the Spark session, with all the needed configurations:
+
+```python
+spark = SparkSession.builder \
+    .appName("DynamicAllocationDemo") \
+    .master(f"k8s://https://{os.getenv('KUBERNETES_SERVICE_HOST')}:{os.getenv('KUBERNETES_SERVICE_PORT_HTTPS')}") \ # using the injected env vars to connect to the Kube API
+    .config("spark.kubernetes.container.image", "192.168.1.3:3000/binayakd/spark-aws:3.5.4") \  # the image we built previously
+    .config("spark.kubernetes.namespace", "spark") \  # kube namespace to deploy into
+    .config("spark.kubernetes.authenticate.driver.serviceAccountName", "spark") \  # service account we created previously 
+    .config("spark.kubernetes.authenticate.executor.serviceAccountName", "spark")\ 
+    .config("spark.eventLog.enabled", "true") \  # enabling logging to spark history server
+    .config("spark.eventLog.dir", "s3a://spark-on-kube/event-logs/") \  # setting the spark history server logging location
+    .config("spark.hadoop.fs.s3a.access.key", "sparkminio") \  # Minio Connection details
+    .config("spark.hadoop.fs.s3a.secret.key", "sparkminio") \
+    .config("spark.hadoop.fs.s3a.endpoint", "http://192.168.1.5:9000") \
+    .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+    .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false") \
+    .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
+    .config("spark.dynamicAllocation.enabled", "true") \  # dynamic resource allocation settings
+    .config("spark.dynamicAllocation.shuffleTracking.enabled", "true") \
+    .config("spark.dynamicAllocation.initialExecutors", "1") \
+    .config("spark.dynamicAllocation.minExecutors", "1") \
+    .config("spark.dynamicAllocation.maxExecutors", "6") \
+    .config("spark.executor.cores", "2") \  # setting the executor resources
+    .config("spark.executor.memory", "2g") \
+    .config("spark.driver.host", "jupyter-headless") \  # configs to enure the executors can reach the driver though the headless service
+    .config("spark.driver.port", "7078") \
+    .config("spark.blockManager.port", "7079") \
+    .getOrCreate()
+```
+With this initial session setup we can see the initial one executor pod get started (together with the pods of the other deployments already running):
+
+```bash
+$ kubectl get pods
+NAME                                            READY   STATUS    RESTARTS   AGE
+minio-856cf99dd8-chxlh                          1/1     Running   0          103d
+spark-history-server-6d46bc784f-bbcn6           1/1     Running   0          99d
+jupyter-5f79c495c9-pbknt                        1/1     Running   0          99d
+dynamicallocationdemo-8114e596c51ef208-exec-1   1/1     Running   0          7s
+```
+
+Then we repurpose the [calculate pi Example that comes with spark](https://github.com/apache/spark/blob/master/examples/src/main/python/pi.py) to run in this spark session:
+
+```python
+def f(_: int) -> float:
+    x = random() * 2 - 1
+    y = random() * 2 - 1
+    return 1 if x ** 2 + y ** 2 <= 1 else 0
+
+def cal_pi(partitions):
+    n = 100000 * partitions
+    count = spark.sparkContext.parallelize(range(1, n + 1), partitions).map(f).reduce(add)
+    print("Pi is roughly %f" % (4.0 * count / n))
+
+cal_pi(10000)
+```
+
+While this operation is running, we can see the number of executor pods increase to the set limit of 6:
+
+```bash
+$ kubectl get pods
+NAME                                            READY   STATUS    RESTARTS   AGE
+minio-856cf99dd8-chxlh                          1/1     Running   0          103d
+spark-history-server-6d46bc784f-bbcn6           1/1     Running   0          99d
+jupyter-5f79c495c9-pbknt                        1/1     Running   0          99d
+dynamicallocationdemo-8114e596c51ef208-exec-1   1/1     Running   0          3m5s
+dynamicallocationdemo-8114e596c51ef208-exec-2   1/1     Running   0          7s
+dynamicallocationdemo-8114e596c51ef208-exec-4   1/1     Running   0          5s
+dynamicallocationdemo-8114e596c51ef208-exec-3   1/1     Running   0          5s
+dynamicallocationdemo-8114e596c51ef208-exec-5   1/1     Running   0          4s
+dynamicallocationdemo-8114e596c51ef208-exec-6   1/1     Running   0          4s
+```
+Once the operation finishes, we can see the value of pi calculated in the jupyter output:
+The results should be:
+```bash
+[Stage 0:===================================================>(9995 + 5) / 10000]
+Pi is roughly 3.142720
+```
+After which the number of executer pods goes back down to 1:
+
+```bash
+$ kubectl get pods
+NAME                                            READY   STATUS    RESTARTS   AGE
+minio-856cf99dd8-chxlh                          1/1     Running   0          103d
+spark-history-server-6d46bc784f-bbcn6           1/1     Running   0          99d
+jupyter-5f79c495c9-pbknt                        1/1     Running   0          99d
+dynamicallocationdemo-8114e596c51ef208-exec-6   1/1     Running   0          3m39s
+```
+
+To get the events to appear in the Spark History server, we need to stop the spark session:
+```python
+spark.stop()
+```
+
+Once the Spark Session stops, we can have a look at the Spark History Server to see how the events:
+
+![Spark History Server Homepage After dynamic allocation](/images/2025-03-31-spark-on-kubernetes/dynamic-resource-allocation.png)
+
+Here we clearly see the initial 1 executor, and then the ramp up to 6 executor when the compute resources were required. The interesting thing is, for some reason the reduction back to 1 executor is not shown properly, but all of the executors are shown to be removed at the end of the job. This contradicts the output from the kubectl commands, and is most probably a bug.
+
